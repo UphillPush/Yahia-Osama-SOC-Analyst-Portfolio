@@ -1,5 +1,7 @@
 ---
 layout: tags
 icon: fas fa-tags
-order: 2
+title: Skill Map
+permalink: /tags/
+order: 3
 ---

@@ -1,5 +1,7 @@
 ---
 layout: categories
-icon: fas fa-stream
-order: 1
+icon: fas fa-folder-open
+title: Domains
+permalink: /categories/
+order: 2
 ---

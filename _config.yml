@@ -16,7 +16,7 @@ timezone:
 
 title: Yahia Osama Portfolio # the main title
 
-tagline: Junior SOC Analyst | Cybersecurity Instructor | B.Eng. Communications # it will display as the subtitle
+tagline: SOC Analyst | Cybersecurity Instructor | B.Eng. Communications # it will display as the subtitle
 
 description: >- # used by seo meta and the atom feed
  Communications Engineer turned Security Analyst. Specialist in SIEM threat detection, phishing forensics, and network traffic analysis. Documenting real-world investigations to secure the digital landscape.
