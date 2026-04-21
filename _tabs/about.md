@@ -17,12 +17,9 @@ Dedicated IT professional with a strong foundation in network infrastructure and
 ---
 
 ## 📄 Curriculum Vitae
-> You can view my full CV below or [download the PDF version here](/assets/pdf/Yahia_Osama_SOC_Analyst_CV.pdf).
-{: .prompt-info }
+> You can view my full CV below or [download the PDF version here](/Yahia-Osama-SOC-Analyst-Portfolio/assets/pdf/Yahia_Osama_SOC_Analyst_CV.pdf).
 
-<iframe src="/assets/pdf/Yahia_Osama_SOC_Analyst_CV.pdf" width="100%" height="800px" style="border:none;">
-    This browser does not support PDFs. Please download the PDF to view it: <a href="/assets/pdf/Yahia_Osama_SOC_Analyst_CV.pdf">Download PDF</a>.
-</iframe>
+<iframe src="https://drive.google.com/file/d/1ooL7ioEcWpO8f9A-BthblpfY3N40hHmT/preview" width="100%" height="800px" style="border:none;" allow="autoplay"></iframe>
 
 ---
 
