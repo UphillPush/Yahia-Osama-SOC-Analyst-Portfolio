@@ -13,9 +13,10 @@ image:
   class: img-contain
 ---
 
-# [Room Name]
+# Alert Triage With Splunk
 
-![[Room Name] Banner]([Insert_Banner_Image_URL_Here]){: .shadow .rounded }
+![Alert Triage With Splunk Banner](https://github.com/user-attachments/assets/65dcd63a-87c5-4f9c-9613-d960c5b64cc2
+){: .shadow .rounded }
 _Figure 1: [Room Name] Challenge overview._
 
 ## Scenario
