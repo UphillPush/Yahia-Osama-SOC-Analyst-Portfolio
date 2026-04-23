@@ -6,7 +6,7 @@ categories: ["Threat Hunting & Triage", "SIEM Investigations"]
 tags: [splunk, alert-triage, brute-force, web-shell, blue-team]
 pin: true
 image:
-  path: https://tryhackme-images.s3.amazonaws.com/room-icons/2fb0a9b7f813718a338cbc765071c7e7.png
+  path: https://tryhackme-images.s3.amazonaws.com/room-icons/674d9727a22822c1eb46cb31-1760348096268
   # This hides it from the internal post header in almost all Chirpy versions
   preview: false
   # If the thumbnail is cropped, try adding this class
