@@ -1,7 +1,7 @@
 ---
 layout: post
 title: "SIEM Investigations: Alert Triage With Splunk Write-up"
-date: 2026-04-23 00:00:00 +0200
+date: 2026-04-22 00:00:00 +0200
 categories: ["Threat Hunting & Triage", "SIEM Investigations"]
 tags: [splunk, alert-triage, brute-force, web-shell, blue-team]
 pin: true
