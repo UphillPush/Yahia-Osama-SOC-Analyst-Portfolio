@@ -1,4 +1,4 @@
----
+<img width="1883" height="801" alt="image" src="https://github.com/user-attachments/assets/4e7f6c9d-c9d9-446f-ba8e-478e63777862" />---
 layout: default
 title: "TryHackMe: Snapped Phish-ing Line Walkthrough"
 description: "Detailed solution and walkthrough for the Snapped Phish-ing Line challenge on TryHackMe."
@@ -9,102 +9,113 @@ redirect_from:
 ---
 
 
-# Snapped-Phish-ing-Line
-<img width="1903"  alt="header" src="https://github.com/user-attachments/assets/3cd4145c-8211-42ce-88f9-a5e57fbf2d84" />
+# Splunk 2
+<img width="1892" height="370" alt="image" src="https://github.com/user-attachments/assets/00561f2a-8e2a-4def-984f-253aa6a3d40d" />
 
-## An Ordinary Midsummer Day...
+## BOTSv2 Dataset:
 
-#### As an IT department personnel of SwiftSpend Financial, one of your responsibilities is to support your fellow employees with their technical concerns. While everything seemed ordinary and mundane, this gradually changed when several employees from various departments started reporting an unusual email they had received. Unfortunately, some had already submitted their credentials and could no longer log in.
+### The data included in this app was generated in August of 2017 by members of Splunk's Security Specialist team - Dave Herrald, Ryan Kovar, Steve Brant, Jim Apger, John Stoner, Ken Westin, David Veuve and James Brodsky. They stood up a few lab environments connected to the Internet. Within the environment they had a few Windows endpoints instrumented with the Splunk Universal Forwarder and Splunk Stream. The forwarders were configured with best practices for Windows endpoint monitoring, including a full Microsoft Sysmon deployment and best practices for Windows Event logging. The environment included a Palo Alto Networks next-generation firewall to capture traffic and provide web proxy services, and Suricata to provide network-based IDS. 
 
-### You now proceeded to investigate what is going on by:
+### BOTSv2 Github: https://github.com/splunk/botsv2
 
-1. Analysing the email samples provided by your colleagues.
-1. Analysing the phishing URL(s) by browsing it using Firefox.
-1. Retrieving the phishing kit used by the adversary.
-1. Using CTI-related tooling to gather more information about the adversary.
-1. Analysing the phishing kit to gather more information about the adversary.
+#### In this exercise, you assume the persona of Alice Bluebird, the analyst who successfully assisted Wayne Enterprises and was recommended to Grace Hoppy at Frothly (a beer company) to assist them with their recent issues.
 
-Note: The phishing emails to be analysed are under the phish-emails directory on the Desktop. Usage of a web browser, text editor and some knowledge of the grep command will help.
+### What Kinds of Events Do We Have?
+#### The SPL (Splunk Search Processing Language) command metadata can be used to search for the same kind of information that is found in the Data Summary, with the bonus of being able to search within a specific index, if desired. All time-values are returned in EPOCH time, so to make the output user readable, the eval command should be used to provide more human-friendly formatting.
+
 
 ## Answer the questions below
->![](https://img.shields.io/badge/Question-blue) Who is the individual who received an email attachment containing a PDF?
+>![](https://img.shields.io/badge/Question-blue) Amber Turing was hoping for Frothly to be acquired by a potential competitor which fell through, but visited their website to find contact information for their executive team. What is the website domain that she visited?
 
 
-
-#### First, open the phish-emails dir on the desktop and right-click `open terminal here`, then we need to search for the file that contains the pdf attachment. This can be achieved through the command
-
+#### First, its known that the name is Amber, using this in the search 
 ```bash 
-grep -l 'name=".*\pdf"' *.eml
+index="botsv2" amber
 ```
-This will return the name of the eml file that has a pdf attachment. We want to find out who received that pdf. The command is tunneled with `xargs` to view how this email was sent to in the command below
+<img width="1907" height="679" alt="image" src="https://github.com/user-attachments/assets/5ad195cc-8cef-4dc6-bbd7-a78ce5d208ec" />
 
+about 56,513 events shows up, browsing the `src_ip` field, multiple ips are found
+
+<img width="1901" height="793" alt="image" src="https://github.com/user-attachments/assets/65469a35-5d10-48b6-a34f-fe0d46221c13" />
+ browsing the logs more, a pan traffic could be seen which is Palo Alto Networks where in the corperates environment the Palo Alto firewall sits between the employer and the internet. 
+
+Palo Alto has a feature called "User-ID", where they talk directly to the Active Directory server. Whenever Amber turns on her computer and logs in, the firewall records "User Amber is currently using the internal IP X.X.X.X
+
+Using this feature, Amber's IP could directly be get through this SPL query 
 ```bash 
-grep -l 'name=".*\pdf"' *.eml | xargs -d '\n' "To:"
+index="botsv2" amber sourcetype="pan:traffic"
 ```
+<img width="1861" height="709" alt="image" src="https://github.com/user-attachments/assets/05e5860e-b66f-4b5c-8e55-79f72ac5b1fe" />
 
-<img width="100%"  alt="code of answer1" src="https://github.com/user-attachments/assets/f9a4c4a7-1dde-4586-b319-f2bcbf498b41" />
-<br>
-<br>
+scrolling to see the src_ip field, its shown that there is only one source ip in the logs which is `10.0.2.101`
+<img width="1883" height="801" alt="image" src="https://github.com/user-attachments/assets/4951bf07-1ff0-4d43-8100-f2a0a6839316" />
 
->![](https://img.shields.io/badge/Answer-success) William McClean
+Using this info, the website domain can be found from combininig the IP address with the sourcetype of domains which is `stream:http`
+```bash 
+index="botsv2" 10.0.2.101 sourcetype="stream:http"
+```
+<img width="1900" height="799" alt="image" src="https://github.com/user-attachments/assets/e990a854-9248-4439-af32-fc37d4729e7d" />
+
+still there is much events and site visited, since the required domain Amber used to find contact information for their executive team, it must be industry related! Amber is working in forthly which is a beer manufacturing company, so adding a keyword like `beer` would limit the logs to what its beeing searched 
+```bash 
+index="botsv2" 10.0.2.101 sourcetype="stream:http"
+```
+<img width="1889" height="801" alt="image" src="https://github.com/user-attachments/assets/18d1e11b-213a-4951-bff9-97d703851938" />
+this limited the search to only 12 events, scrolling to explore the site field,
+<img width="1862" height="808" alt="image" src="https://github.com/user-attachments/assets/29682388-f520-43ad-81b3-bfd89a409381" />
+
+
+>![](https://img.shields.io/badge/Answer-success) www.berkbeer.com
 
 <br> 
 <br>
 <br> 
 <br>
 
-> ![](https://img.shields.io/badge/Question-blue) **What email address was used by the adversary to send the phishing emails?**
-#### The sender name of all files can be displayed with grep command too, as follows
+> ![](https://img.shields.io/badge/Question-blue) **Amber found the executive contact information and sent him an email. What image file displayed the executive's contact information? Answer example: /path/image.ext**
+
+since Amber was browsing www.berkbeer.com to find the executive contact information, using the website domain will help find executives informations Amber found 
 ```bash
-grep -h -A 1 "^From:" *.eml"
+index="botsv2" www.berkbeer.com
 ```
-Where `-h` is used to hide the file name   
-&emsp; &emsp;&emsp;`-A` for displaying the line after the search keyword and the lines after, depending on the number follows <br> 
-&emsp;&emsp;  &emsp;   `1` number of lines to display after the line match <br>   
+<img width="1901" height="714" alt="image" src="https://github.com/user-attachments/assets/2dcd94ea-2b0c-4a95-b73f-b6d5e825c34c" />
 
-  <img width="624"  alt="Picture3" src="https://github.com/user-attachments/assets/707fd174-9ef8-4df1-b6fa-45b6344ba6f5" />
+Scrolling to the `filename` field, a list of `.png` files is seen, where one of the images name is `ceoberk`
+<img width="1909" height="802" alt="image" src="https://github.com/user-attachments/assets/2231c7a1-8d40-4010-88df-14188076ce45" />
+
   <br>
   <br>
   
->![](https://img.shields.io/badge/Answer-success) Accounts.Payable@groupmarketingonline.icu
+>![](https://img.shields.io/badge/Answer-success) /images/ceoberk.png
 
 <br> 
 <br>
 <br> 
 <br>
 
-> ![](https://img.shields.io/badge/Question-blue) **What is the redirection URL to the phishing page for the individual Zoe Duncan? (defanged format)**
-#### For this question, we have to open the email sent to Zoe and download the attached html to inspect it 
-<img width="1795" alt="Screenshot 2026-01-18 175342" src="https://github.com/user-attachments/assets/e0be1594-7286-4eef-a214-3aff404add25" />
-<img width="1798" alt="Screenshot 2026-01-18 175412" src="https://github.com/user-attachments/assets/da8fb663-f7ff-4d8c-999f-8cebc27fa606" />
+> ![](https://img.shields.io/badge/Question-blue) **What is the CEO's name? Provide the first and last name.**
 
-<br><br>
-Now, the html file must be inspected for any url inside it, which can be done through the commnad 
+The image name could reveal only the ceo last name, Assuming Amber opened the image and knew the first name then tried to cmmunicate with them through the email. Now the domain `berkbeer.com` is used again along with `smtp` traffic and converting all data to raw to facilitate the search
 ```bash
-grep "http[^ ]" *.html
+index="botsv2" berkbeer.com sourcetype="stream:smtp" 
+|  table _time _raw
 ```
-<img width="1132"  alt="Screenshot 2026-01-18 175932" src="https://github.com/user-attachments/assets/2fecd1a0-3253-4df7-b2e4-30704c38a282" />
-<br> 
-<br>
-So the URL is:   
+now searching for the name using `ctrl+F` and the keyword ` Berk`
+<img width="1915" height="797" alt="image" src="https://github.com/user-attachments/assets/7acd668f-9feb-4eca-a0a6-73713b122ae0" />
 
-http://kennaroads.buzz/data/Update365/office365/40e7baa2f826a57fcf04e5202526f8bd/?email=zoe.duncan@swiftspend.finance&error    
+<br> 
 
-  
-This URL has to be defanged as required in the question, so Cyberchef was used to do it: 
-<br> 
-<br> 
-<img width="100%"  alt="Picture4" src="https://github.com/user-attachments/assets/83df2aca-2f4f-46bd-b081-dafb5ddfdbc3" />   
-<br> 
->![](https://img.shields.io/badge/Answer-success) hxxp[://]kennaroads[.]buzz/data/Update365/office365/40e7baa2f826a57fcf04e5202526f8bd/?email=zoe[.]duncan@swiftspend[.]finance&error
+>![](https://img.shields.io/badge/Answer-success) Martin Berk
 <br>
 <br>
 <br>
 <br>
 
-> ![](https://img.shields.io/badge/Question-blue) **What is the URL to the .zip archive of the phishing kit? (defanged format)**
-#### The phishing URL sent to Zeo has a specific path to her, but if we remove the path related to the user, it will direct us to some files it's hosting 
-so for the link:   
+> ![](https://img.shields.io/badge/Question-blue) **What is the CEO's email address?**
+using the same previous approach but search for `berk@` this time would show the ceo email 
+<img width="1917" height="731" alt="image" src="https://github.com/user-attachments/assets/b6f70d27-3abf-42e0-9606-63a01478107f" />
+
+
 http://kennaroads.buzz/data/Update365/office365/40e7baa2f826a57fcf04e5202526f8bd/?email=zoe.duncan@swiftspend.finance&error  
 we will just keep the main path:   
 http://kennaroads.buzz/data/Update365/  
