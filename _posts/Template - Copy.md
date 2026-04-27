@@ -116,77 +116,57 @@ using the same previous approach but search for `berk@` this time would show the
 <img width="1917" height="731" alt="image" src="https://github.com/user-attachments/assets/b6f70d27-3abf-42e0-9606-63a01478107f" />
 
 
-http://kennaroads.buzz/data/Update365/office365/40e7baa2f826a57fcf04e5202526f8bd/?email=zoe.duncan@swiftspend.finance&error  
-we will just keep the main path:   
-http://kennaroads.buzz/data/Update365/  
-<img width="624" height="312" alt="Picture5" src="https://github.com/user-attachments/assets/80a14ab3-5ad4-4aaf-8bd6-227cbfae57d0" />
-<br>
-<br>
-There is no `.zip` file here, so going back a bit to the link:  
-http://kennaroads.buzz/data    
 
-show us this page   
-
-   <img width="624" height="303" alt="Picture6" src="https://github.com/user-attachments/assets/e66c4b1f-14e2-4d7c-b9e4-7a3944e648c4" /> 
-   <br>
-   <br> 
-   Now, we can clearly see the `.zip` archive of the phishing kit, which is Update365.zip
-   so the link we are looking for is:   
-   http://kennaroads.buzz/data/Update365.zip    
-   
-   defang this URL using CyberChef:   
-<img width="1430" height="695" alt="Picture7" src="https://github.com/user-attachments/assets/3d22b28d-70d0-4290-9310-5a1de12ed48b" />
-<br>
-<br>
-
->![](https://img.shields.io/badge/Answer-success) hxxp[://]kennaroads[.]buzz/data/Update365[.]zip
+>![](https://img.shields.io/badge/Answer-success) mberk@berkbeer.com
 <br>
 <br>
 <br>
 <br>
 
-> ![](https://img.shields.io/badge/Question-blue) **What is the SHA256 hash of the phishing kit archive?**
-#### Download the Update365.zip in the phish-emails dir, then in the terminal write the command:   
-```bash
-sha256sum Update365.zip
-```
+> ![](https://img.shields.io/badge/Question-blue) **After the initial contact with the CEO, Amber contacted another employee at this competitor. What is that employee's email address?**
 
-<img width="624" height="232" alt="Picture8" src="https://github.com/user-attachments/assets/d5a3d8b7-99a4-46ef-9898-689ec866dec5" />
+using the same approach, searching for `@berk` would provide any other emails from the same domain 
+which was in this case only 
+
+<img width="1910" height="784" alt="image" src="https://github.com/user-attachments/assets/7580ff27-c6ee-45eb-811d-b66ba0c25c30" />
 <br> 
 <br>
 
-> ![](https://img.shields.io/badge/Answer-success) ba3c15267393419eb08c7b2652b8b6b39b406ef300ae8a18fee4d16b19ac9686
+> ![](https://img.shields.io/badge/Answer-success) hbernhard@berkbeer.com
      
 <br>
 <br>
 <br>
 <br>
 
-> ![](https://img.shields.io/badge/Question-blue) **When was the phishing kit archive first submitted? (format: YYYY-MM-DD HH:MM:SS UTC)**
-#### Using an open-source, popular tool for investigating viruses, VirusTotal is the best option.   
-In my browser, I visited virustotal page and inserted the archive sha256 hash to scan it, and easily saw the submission date  
-<img width="100%"  alt="image" src="https://github.com/user-attachments/assets/0dd5610f-7af5-4716-9f1a-aa2217ffffeb" />
+> ![](https://img.shields.io/badge/Question-blue) **What is the name of the file attachment that Amber sent to a contact at the competitor?**
+Converting back the logs to a `show syntax highlighted` for better vision, in the 1st log of the same search there is a `attach_filename` if expanded, the attachment file is shown  
+<img width="1906" height="719" alt="image" src="https://github.com/user-attachments/assets/37babaae-3a73-468a-8cb9-164811d5906a" />
 
 <br> 
 <br>
 
-> ![](https://img.shields.io/badge/Answer-success) 2020-04-08 21:55:50 UTC
+> ![](https://img.shields.io/badge/Answer-success)  Saccharomyces_cerevisiae_patent.docx
 
 <br>
 <br>
 <br>
 <br>
 
-> ![](https://img.shields.io/badge/Question-blue) **What was the email address of the user who submitted their password twice?**
-#### The best way to track the login attempts is through logs, and in previous questions its know where are the hosting files  
-so back again to the link:   
-http://kennaroads.buzz/data    
+> ![](https://img.shields.io/badge/Question-blue) **What is Amber's personal email address?**
+In the same email log of previous question, its notices that there is a base64 bit encoding 
+<img width="1906" height="768" alt="image" src="https://github.com/user-attachments/assets/3a471833-097f-4def-8096-d8ccc22f22cd" />
 
-a `log.txt` file is seen, open it and try to look up for repeated email or password     
+Taking a look at the content, there is an encoded text that might be suspicious
+<img width="1891" height="730" alt="image" src="https://github.com/user-attachments/assets/ff0cf572-a6e7-40d8-9b27-5e74840f4509" />
 
-<img width="975"  alt="image" src="https://github.com/user-attachments/assets/1c7fb47b-d887-417a-8015-05320392bb11" />  
+Converting it back from base64 encoding using CyberChef 
+<img width="1911" height="722" alt="image" src="https://github.com/user-attachments/assets/18aeb9d8-7af2-4d55-8b9a-714dae6220cf" />
 
-> ![](https://img.shields.io/badge/Answer-success) michael.ascot@swiftspend.finance
+
+
+
+> ![](https://img.shields.io/badge/Answer-success) ambersthebest@yeastiebeastie.com
 <br>
 <br>
 <br>
