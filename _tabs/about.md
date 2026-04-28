@@ -19,7 +19,7 @@ Electronics and Communications Engineer with a dedicated focus on defensive secu
 ## 📄 Curriculum Vitae
 > You can view my full CV below or [download the PDF version here](/Yahia-Osama-SOC-Analyst-Portfolio/assets/pdf/Yahia_Osama_SOC_Analyst_CV.pdf).
 
-<iframe src="https://drive.google.com/file/d/1ooL7ioEcWpO8f9A-BthblpfY3N40hHmT/preview" width="100%" height="800px" style="border:none;" allow="autoplay"></iframe>
+<iframe src="https://drive.google.com/file/d/1jn4zr12ruLsZc3ZzHIngfCLZWYu1MMez/view" width="100%" height="800px" style="border:none;" allow="autoplay"></iframe>
 
 ---
 
