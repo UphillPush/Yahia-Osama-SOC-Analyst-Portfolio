@@ -37,8 +37,7 @@ Electronics and Communications Engineer with a dedicated focus on defensive secu
 ---
 
 ## 🎓 Education
-* **B.Sc. in Electronics and Communications Engineering**
-   * *Full Scholarship recipient; focus on Arduino and Applied Physics.*
+* **B.Sc. in Electronics and Communications Engineering** | October 6 University (Full scholarship)
 * **STEM High School Diploma** | 6th of October STEM School for Boys
 
 ---
