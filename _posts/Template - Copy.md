@@ -172,74 +172,105 @@ Converting it back from base64 encoding using CyberChef
 <br>
 <br>
 
-> ![](https://img.shields.io/badge/Question-blue) **What was the email address used by the adversary to collect compromised credentials?**
-#### To know this we have to investigate more in the phishing kit archive, heading back to the host website at:   
-http://kennaroads.buzz/data/Update365.zip     
+### 200 series questions
+> ![](https://img.shields.io/badge/Question-blue) **What version of TOR Browser did Amber install to obfuscate her web browsing? Answer guidance: Numeric with one or more delimiter.**
 
-   the Update365.zip is downloaded, then we move it to the phish-emails dir to investigate it using the command
-   ```bash
-  mv ~/Downloads/Update365.zip .
-```
-Then Unzip it using the command  
+
+To know the version of tor, the tor keyword was used in the search along with `amber`
 ```bash
-unzip Update365.zip
+index="botsv2" amber tor
 ```
 
-<img width="1289"  alt="image" src="https://github.com/user-attachments/assets/35f93b98-3539-4862-b259-c185e12e83cd" />
+<img width="1908" height="662" alt="Screenshot 2026-04-28 200903" src="https://github.com/user-attachments/assets/0918d533-94b9-41c9-a759-0511c67b47c9" />
 
-  The file that collects emails and send it have the word send in it for sure and is in the Update365 folder, so searching for files that contain the send keyword using the command  
-  ```bash
-grep -r "*send"
-```
-we found  
+Browsing the interesting fields, the app field contains the version of the tor browser as shown 
 
-<img width="1134" alt="image" src="https://github.com/user-attachments/assets/fa5c1788-f72f-4d80-985b-d78edfb768f2" />   
-
-  The submit.php is the file responsible for the submit button, to further investigate it we tunneled the command with cat
-<img width="975"  alt="image" src="https://github.com/user-attachments/assets/75cc76b2-1453-4bab-a78b-d8112be8b627" />
-<img width="975" alt="image" src="https://github.com/user-attachments/assets/dd1122d7-87e0-4335-a413-37ad673aaa00" />
-<br>
+<img width="1743" height="734" alt="Screenshot 2026-04-28 201029" src="https://github.com/user-attachments/assets/0f4dd824-eabd-46ea-af7c-5706c156125c" />
 
 
-Here, another suspicious email is found, and the responses are sent to whom is 
-> ![](https://img.shields.io/badge/Answer-success) m3npat@yandex.com
+
+> ![](https://img.shields.io/badge/Answer-success) 7.0.4
 <br>
 <br>
 <br>
 <br>
 
-> ![](https://img.shields.io/badge/Question-blue) **The adversary used other email addresses in the obtained phishing kit. What is the email address that ends in "@gmail.com"?**
-#### This one is easy, you just have to search for an email that ends with @gmail.com using the command:  
+> ![](https://img.shields.io/badge/Question-blue) **What is the public IPv4 address of the server running www.brewertalk.com?**
+
+Since the requests sent to browse the website are of port 80 and the server is the destination port to the requests 
+filtering the website link and the port 80 will show up the private and public IPs of the server hosting the website 
 ```bash
-grep -r "@gmail.com"
+index="botsv2" www.brewertalk.com dest_port=80
 ```
-<img width="1319"  alt="image" src="https://github.com/user-attachments/assets/88218dd2-ad78-4a3f-bb85-7f103140ebc8" />
+<img width="1899" height="712" alt="Screenshot 2026-04-28 203007" src="https://github.com/user-attachments/assets/cb2c40de-edab-46eb-a501-2b3142e14ebc" />
+
+Expolring the interesting fields, the Public IP of the server is found 
+<img width="1906" height="786" alt="Screenshot 2026-04-28 203104" src="https://github.com/user-attachments/assets/df46e637-fc96-4489-a2dd-432ad81dca3e" />
+
+
+
+> ![](https://img.shields.io/badge/Answer-success) 52.42.208.228
+<br>
+<br>
 <br>
 <br>
 
-> ![](https://img.shields.io/badge/Answer-success) jamestanner2299@gmail.com
-<br>
-<br>
-<br>
-<br>
+> ![](https://img.shields.io/badge/Question-blue) **Provide the IP address of the system used to run a web vulnerability scan against www.brewertalk.com.**
 
-> ![](https://img.shields.io/badge/Question-blue) **What is the hidden flag?**
+Since tor was used to collect data from the website, the website name along with the keyword tor could be used to find the IP address running the scan 
+```bash
+index="botsv2" www.brewertalk.com tor
+```
+Expolring the src_ip field
+<img width="1909" height="727" alt="Screenshot 2026-04-28 203436" src="https://github.com/user-attachments/assets/ae5d6301-2414-44dd-96df-78f8d9985c98" />
 
-Reading the instruction for this one :   
-<img width="651" alt="image" src="https://github.com/user-attachments/assets/6a401184-e86a-4eba-aa40-fbc8d4539d84" />  
-
-  Then the flag is a text file that is a subdomain or a directory of the phishing URL, since there is no enumeration tool in the VM like Gobuster, I guessed its called `flag.txt`   
-  so I tried this directory in the URL :   
-  <img width="975"  alt="image" src="https://github.com/user-attachments/assets/42596687-eee8-4ac9-a91e-5ada5691f5e9" />
-  <br> 
-  So the flag is found, but it seems to be encoded. For that, we will use CyberChef to decode it back 
-
-  <img width="975"  alt="image" src="https://github.com/user-attachments/assets/53228822-dc45-47b2-9479-ef89ee5fd601" />
-  <br>
-  <br>
   
-  > ![](https://img.shields.io/badge/Answer-success) THM{pL4y_w1Th_tH3_URL}
+  > ![](https://img.shields.io/badge/Answer-success) 45.77.65.211
 
 
+> ![](https://img.shields.io/badge/Question-blue) **The IP address from Q#2 is also being used by a likely different piece of software to attack a URI path. What is the URI path? Answer guidance: Include the leading forward slash in your answer. Do not include the query string or other parts of the URI. Answer example: /phpinfo.php**
 
+Using the attacker IP revealed in the previous questions along with searching for logs that the `/*` where it indicates a path 
+```bash
+index="botsv2" src_ip="45.77.65.211" "/*"
+```
+<img width="1906" height="669" alt="Screenshot 2026-04-28 210610" src="https://github.com/user-attachments/assets/b49c6681-23af-46f3-a174-d81fb8b4ccbc" />
+
+Expolring the uri_path field which indicated that `/member.php` was the most requested which can indicate that members info is being comprimised
+<img width="1862" height="691" alt="Screenshot 2026-04-28 210821" src="https://github.com/user-attachments/assets/16792f1c-fc70-498c-8080-91ed4570c786" />
+
+
+  
+  > ![](https://img.shields.io/badge/Answer-success) /member.php
+
+> ![](https://img.shields.io/badge/Question-blue) **What SQL function is being abused on the URI path from the previous question?**
+
+Browsing the detals and content of the logs filtered from the `/member.php` path, there is a clear SQL query that uses a function
+<img width="1897" height="668" alt="Screenshot 2026-04-28 210946" src="https://github.com/user-attachments/assets/d50a16ef-ee27-4c0b-a88c-a8400ab4dea1" />
+
+  > ![](https://img.shields.io/badge/Answer-success) updatexml
+
+> ![](https://img.shields.io/badge/Question-blue) **What was the value of the cookie that Kevin's browser transmitted to the malicious URL as part of an XSS attack? Answer guidance: All digits. Not the cookie name or symbols like an equal sign.**
+
+As the XSS attack was mentioned, its obvious to include a related keyword like `script` which is used in XSS attack. 
+Using the username kevin along with the script keyword 
+```bash
+index="botsv2" kevin *script
+```
+browsing the cookies field shows 4 cookies, the last one is suspcious because along with the sid, there is also a adminsid which indicates an escalation of privilages using the same cookie token 
+<img width="1893" height="662" alt="Screenshot 2026-04-28 212508" src="https://github.com/user-attachments/assets/e240416d-39ac-4eeb-800e-f7ef3319a6d6" />
+
+
+  > ![](https://img.shields.io/badge/Answer-success) 1502408189
+
+> ![](https://img.shields.io/badge/Question-blue) **What brewertalk.com username was maliciously created by a spear phishing attack?**
+
+Expanding the search to see what the cookie token was used for and filtering it out by clicking on the cookie 
+<img width="1910" height="674" alt="image" src="https://github.com/user-attachments/assets/f9581aa2-d494-429f-aed5-f6b3e76f687b" />
+
+Its required to get the username that was created by spear phising, so search for username in the logs
+<img width="1909" height="722" alt="image" src="https://github.com/user-attachments/assets/3ef98ee6-1af4-419e-a503-b8fc651aab56" />
+
+
+  > ![](https://img.shields.io/badge/Answer-success) kIagerfield
     
