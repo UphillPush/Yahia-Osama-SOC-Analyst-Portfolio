@@ -384,3 +384,127 @@ The answer is the second suspicious domain
 
 
 > ![](https://img.shields.io/badge/Answer-success) eidk.hopto.org
+
+### 400 series Questions
+
+> ![](https://img.shields.io/badge/Question-blue) **A Federal law enforcement agency reports that Taedonggang often spear phishes its victims with zip files that have to be opened with a password. What is the name of the attachment sent to Frothly by a malicious Taedonggang actor?**
+
+Since it's a spear phishing attack, the most common way is thrugh the email, so filtering the stmp traffic along with the `.zip` files extensions reveals the zip
+```bash
+index="botsv2"  *.zip sourcetype="stream:smtp"
+```
+<img width="1890" height="654" alt="image" src="https://github.com/user-attachments/assets/14eef490-2d6e-4cee-a4de-854dc62f33b7" />
+
+Exploring the interesting fields, a field named `attach_filename()` has a zip in it 
+<img width="1902" height="646" alt="image" src="https://github.com/user-attachments/assets/c1ff1664-c20e-4936-a26c-80c66443b36b" />
+
+> ![](https://img.shields.io/badge/Answer-success) invoice.zip
+
+
+> ![](https://img.shields.io/badge/Question-blue) **What is the password to open the zip file?**
+
+Filtering out the log of the file by clicking on its name then converting the log to raw text reveals the details of the email
+<img width="1893" height="687" alt="image" src="https://github.com/user-attachments/assets/9382703e-b9e3-4b65-a0e3-b2c6c7add045" />
+
+Then a search for the password keyword is made to reveal the password
+<img width="1893" height="687" alt="image" src="https://github.com/user-attachments/assets/752335ee-2af3-4d6a-9546-ce18bd72b2e9" />
+
+> ![](https://img.shields.io/badge/Answer-success) 912345678
+
+> ![](https://img.shields.io/badge/Question-blue) **The Taedonggang APT group encrypts most of their traffic with SSL. What is the "SSL Issuer" that they use for the majority of their traffic? Answer guidance: Copy the field exactly, including spaces.**
+
+Using the keywords of ssl and issuer in the spl query 
+```bash
+index="botsv2" ssl issuer
+```
+<img width="1879" height="631" alt="image" src="https://github.com/user-attachments/assets/9a59a17f-2f55-43b1-ad59-6fc42b68ed7c" />
+
+Exploring the interesting field after, `ssl_issuer` filed is found where most of the traffic include `C = US` in it 
+<img width="1885" height="599" alt="image" src="https://github.com/user-attachments/assets/d8d9e392-bf8d-411c-bd15-aa5b44e01492" />
+
+
+> ![](https://img.shields.io/badge/Answer-success) C=US
+
+
+> ![](https://img.shields.io/badge/Question-blue) **What unusual file (for an American company) does winsys32.dll cause to be downloaded into the Frothly environment?**
+
+Searching for the `winsys32.dll` related logs 
+```bash
+index="botsv2" winsys32.dll
+```
+<img width="1910" height="605" alt="image" src="https://github.com/user-attachments/assets/9bd01326-d481-40de-bcff-0203227349db" />
+
+It  is clear that the file is used through the ftp process, so filtering out the traffic of ftp and using most comman commands of ftp to download the files 
+```bash
+index="botsv2" sourcetype="stream:ftp" (*get* OR *retr*)
+```
+<img width="1889" height="648" alt="image" src="https://github.com/user-attachments/assets/6bcd2346-9a5c-4771-be91-a46aea08237b" />
+
+!warning: copying the file name directly may cause escape unicode deformation so using cyberchef to solve this problem and allowing to copy the file name wihout any changes as following
+<img width="1900" height="641" alt="image" src="https://github.com/user-attachments/assets/4cee8bb5-4764-4d8a-907e-2d2c91524fa8" />
+
+
+> ![](https://img.shields.io/badge/Answer-success) 나_는_ᄃ_ᅦ이ᄇ.ᅵᄃ
+
+> ![](https://img.shields.io/badge/Question-blue) **What is the first and last name of the poor innocent sap who was implicated in the metadata of the file that executed PowerShell Empire on the first victim's workstation? Answer example: John Smith**
+
+The hash of the file is not at the logs at all, all found was the hash of winword itself which was 
+SHA1=8F68C842B2F38A1E638267CA6AAF663A8AF5D6A7 and it was safe in VirusTotal 
+So the only way to know it is to download the file in a sandbox and hash it, fortunatly there are links in the task provided that made that move
+
+browsing the link:
+https://www.virustotal.com/gui/file/d8834aaa5ad6d8ee5ae71e042aca5cab960e73a6827e45339620359633608cf1/detection
+
+<img width="1344" height="649" alt="image" src="https://github.com/user-attachments/assets/16789796-c550-4ee0-8a8e-9316523a97d3" />
+
+
+> ![](https://img.shields.io/badge/Answer-success) Ryan Kovar
+
+> ![](https://img.shields.io/badge/Question-blue) **Within the document, what kind of points is mentioned if you found the text?**
+
+So the only way to know it is to download the file in a sandbox and open it, fortunatly there are links in the task provided that made that move
+
+browsing the link:
+https://app.any.run/tasks/15d17cd6-0eb6-4f52-968d-0f897fd6c3b3
+<img width="1361" height="655" alt="image" src="https://github.com/user-attachments/assets/db082cd6-cbef-4d99-ba5c-7021601c26f5" />
+
+
+> ![](https://img.shields.io/badge/Answer-success) CyberEastEgg
+
+> ![](https://img.shields.io/badge/Question-blue) **Within the document, what kind of points is mentioned if you found the text?**
+
+So the only way to know it is to download the file in a sandbox and open it, fortunatly there are links in the task provided that made that move
+
+browsing the link:
+https://app.any.run/tasks/15d17cd6-0eb6-4f52-968d-0f897fd6c3b3
+<img width="1361" height="655" alt="image" src="https://github.com/user-attachments/assets/db082cd6-cbef-4d99-ba5c-7021601c26f5" />
+
+searching for created scheduled tasks
+```bash
+index="botsv2" schtasks create
+```
+<img width="1910" height="510" alt="image" src="https://github.com/user-attachments/assets/0e03a1cc-e67e-47a2-a4c8-177c5c282b17" />
+
+Browsing the interesting fields, the `Process_CommandLine` has some encoded commands
+<img width="1900" height="540" alt="image" src="https://github.com/user-attachments/assets/0cf0d277-b376-4cac-89bb-2c79e0542e16" />
+
+clicking on the command to filter it out 
+<img width="1870" height="352" alt="image" src="https://github.com/user-attachments/assets/7a1d6daa-2922-460f-a159-de9463d6fe11" />
+
+its obvious that the command line make the scheduled task in this path `HKLM:\Software\Microsoft\Network`
+the HKLM suggests that there are changes happened in the registery key as HKLM is abbreviations for 
+`HKEY_LOCAL_MACHINE`
+so filtering it out in the spl query 
+```bash
+index="botsv2" HKLM\\Software\\Microsoft\\Network
+```
+<img width="1894" height="620" alt="image" src="https://github.com/user-attachments/assets/237d0fbb-7b36-4d7f-9f6a-d5314a8edd17" />
+
+<img width="1909" height="514" alt="image" src="https://github.com/user-attachments/assets/663740e2-2685-42e4-8d81-ddf9823e9085" />
+
+<img width="1910" height="643" alt="image" src="https://github.com/user-attachments/assets/9a78ad00-ccc1-4836-a2df-afddfea4c807" />
+
+
+> ![](https://img.shields.io/badge/Answer-success) CyberEastEgg
+
+
