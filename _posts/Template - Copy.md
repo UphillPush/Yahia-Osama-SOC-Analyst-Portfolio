@@ -500,11 +500,12 @@ index="botsv2" HKLM\\Software\\Microsoft\\Network
 ```
 <img width="1894" height="620" alt="image" src="https://github.com/user-attachments/assets/237d0fbb-7b36-4d7f-9f6a-d5314a8edd17" />
 
-<img width="1909" height="514" alt="image" src="https://github.com/user-attachments/assets/663740e2-2685-42e4-8d81-ddf9823e9085" />
+There are 4 events each has a base64 encoded text, take each one of the four and convert it to readable text in cyberchef
+Use the Frombase64 along with text decode utf-16 (1200) as it was decoded with Unicode 
 
 <img width="1910" height="643" alt="image" src="https://github.com/user-attachments/assets/9a78ad00-ccc1-4836-a2df-afddfea4c807" />
 
 
-> ![](https://img.shields.io/badge/Answer-success) CyberEastEgg
+> ![](https://img.shields.io/badge/Answer-success) process.php
 
 
