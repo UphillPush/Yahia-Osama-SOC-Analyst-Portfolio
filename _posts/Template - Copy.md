@@ -273,4 +273,117 @@ Its required to get the username that was created by spear phising, so search fo
 
 
   > ![](https://img.shields.io/badge/Answer-success) kIagerfield
-    
+
+
+
+
+
+
+> ![](https://img.shields.io/badge/Question-blue) **Mallory's critical PowerPoint presentation on her MacBook gets encrypted by ransomware on August 18. What is the name of this file after it was encrypted?**
+
+Using the username mallory keyword along with the `*ppt*` reveals all the ppt files of mallory 
+```bash
+index="botsv2" mallory *ppt*
+```
+Scrolling and exploring the interestinf fields, a filname field was found with 4 values where it contains two encrypted ppt files, as it was mentioned that the file was critical then its recommened that the file doen't include `old` 
+<img width="1907" height="633" alt="image" src="https://github.com/user-attachments/assets/05c894bc-3b59-422a-92d7-f0b5e7efa9fd" />
+
+  > ![](https://img.shields.io/badge/Answer-success) Frothly_marketing_campaign_Q317.pptx.crypt
+
+
+> ![](https://img.shields.io/badge/Question-blue) **There is a Games of Thrones movie file that was encrypted as well. What season and episode is it? **
+
+Trying to search for the encrypted file name using the mallory keyword didn't give any results about the rquired movie
+so maybe the movie was in another user. 
+Changing the SPL query to be
+```bash
+index="botsv2" *.crypt (*GoT* OR *Game* OR *Thrones*)
+```
+<img width="1900" height="683" alt="image" src="https://github.com/user-attachments/assets/93f06c6e-64ca-4b8f-a83a-167d4f6a25ad" />
+
+and browsing the logs content, it was found that the movie encryped was S07E02
+<img width="1906" height="777" alt="image" src="https://github.com/user-attachments/assets/417d574a-8c84-494d-8642-43ab6319267f" />
+
+
+
+  > ![](https://img.shields.io/badge/Answer-success) S07E02
+
+
+> ![](https://img.shields.io/badge/Question-blue) **Kevin Lagerfield used a USB drive to move malware onto kutekitten, Mallory's personal MacBook. She ran the malware, which obfuscates itself during execution. Provide the vendor name of the USB drive Kevin likely used. Answer Guidance: Use time correlation to identify the USB drive.**
+
+Using the info i the question in the query, its searched for the `kutekitten` keyword along with the usb, but there are about 40 events which is still alot 
+```bash
+index="botsv2" kutekitten usb
+```
+<img width="1913" height="582" alt="image" src="https://github.com/user-attachments/assets/d8b31883-5458-4c56-b926-49797835fac2" />
+
+Since the question is asking for the vendor of the usb, adding the vendor keyword revealed info about the usb directly 
+```bash
+index="botsv2" kutekitten usb vendor
+```
+<img width="1885" height="667" alt="image" src="https://github.com/user-attachments/assets/b7ec37ab-1ae3-4176-a5c8-fd6e9fbdfede" />
+
+Using the serial and id to search for the usb online, the vendor is found 
+<img width="1436" height="455" alt="image" src="https://github.com/user-attachments/assets/ce273239-1e76-4266-8fa2-c12ca11a6106" />
+
+
+<img width="1906" height="777" alt="image" src="https://github.com/user-attachments/assets/417d574a-8c84-494d-8642-43ab6319267f" />
+
+
+
+  > ![](https://img.shields.io/badge/Answer-success) Alcor Micro Corp.
+
+> ![](https://img.shields.io/badge/Question-blue) **What programming language is at least part of the malware from the question above written in?**
+
+Info about the malware such as its programming language couldn't be found in logs, its usually in virusTotal when searching for the hash of the malware 
+So to answer this question, the hash of the malware must be found first 
+Since the malware came from the USB, invistigating the logs right after the usb logs and searching for the keyword sha256 in it could reveal the malware hash 
+
+First search for the usb logs 
+```bash
+index="botsv2" kutekitten usb vendor
+```
+<img width="1895" height="600" alt="image" src="https://github.com/user-attachments/assets/c1cfb8a2-8906-4411-812c-c04126484e0c" />
+
+
+Then the timestamp of the recent log was clicked to select the logs with times after that log 
+<img width="1905" height="621" alt="image" src="https://github.com/user-attachments/assets/4e24fcd6-141b-4985-aaf7-e45d17db93e1" />
+
+
+Sorting the logs from oldest to newest and  display them as raw data would facilitate the search for the `sha256` keyword 
+```bash
+index=botsv2 kutekitten usb
+| table _time _raw 
+| sort + _time
+```
+<img width="1900" height="614" alt="image" src="https://github.com/user-attachments/assets/18d10a55-6d36-4fa2-945f-b5bf21bc6326" />
+
+After gerring the hash, looking it up in VirusTotal reveals the language that this malware was made with 
+<img width="1910" height="906" alt="image" src="https://github.com/user-attachments/assets/1448a57b-9723-481a-a800-a8797eae9496" />
+
+  > ![](https://img.shields.io/badge/Answer-success) Perl
+
+
+
+> ![](https://img.shields.io/badge/Question-blue) **When was this malware first seen in the wild? Answer Guidance: YYYY-MM-DD**
+
+Browsing the VirusTotal details tab 
+<img width="1895" height="928" alt="image" src="https://github.com/user-attachments/assets/e6bd4e2a-0429-4441-93dc-03587689bc40" />
+> ![](https://img.shields.io/badge/Answer-success) 2017-01-17
+
+> ![](https://img.shields.io/badge/Question-blue) **The malware infecting kutekitten uses dynamic DNS destinations to communicate with two C&C servers shortly after installation. What is the fully-qualified domain name (FQDN) of the first (alphabetically) of these destinations?**
+
+Browsing the VirusTotal relations tab, different domains was seen, ignore the green safe domain.
+The answer is the first suspicious domain 
+<img width="1866" height="922" alt="image" src="https://github.com/user-attachments/assets/686963c5-7f9c-417f-849b-392911147908" />
+
+> ![](https://img.shields.io/badge/Answer-success) eidk.duckdns.org
+
+> ![](https://img.shields.io/badge/Question-blue) **From the question above, what is the fully-qualified domain name (FQDN) of the second (alphabetically) contacted C&C server?**
+
+Browsing the VirusTotal relations tab, different domains was seen, ignore the green safe domain.
+The answer is the second suspicious domain 
+<img width="1906" height="918" alt="image" src="https://github.com/user-attachments/assets/6a5fe0f3-ff93-4199-8930-bd6d0fa1f587" />
+
+
+> ![](https://img.shields.io/badge/Answer-success) eidk.hopto.org
