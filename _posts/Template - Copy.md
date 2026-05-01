@@ -327,9 +327,6 @@ Using the serial and id to search for the usb online, the vendor is found
 <img width="1436" height="455" alt="image" src="https://github.com/user-attachments/assets/ce273239-1e76-4266-8fa2-c12ca11a6106" />
 
 
-<img width="1906" height="777" alt="image" src="https://github.com/user-attachments/assets/417d574a-8c84-494d-8642-43ab6319267f" />
-
-
 
   > ![](https://img.shields.io/badge/Answer-success) Alcor Micro Corp.
 
