@@ -1,511 +1,694 @@
-<img width="1883" height="801" alt="image" src="https://github.com/user-attachments/assets/4e7f6c9d-c9d9-446f-ba8e-478e63777862" />---
-layout: default
-title: "TryHackMe: Snapped Phish-ing Line Walkthrough"
-description: "Detailed solution and walkthrough for the Snapped Phish-ing Line challenge on TryHackMe."
-
-redirect_from: 
-  - /TryHackMe/Challenges/Snapped-Phish-ing-Line.html
-  - /TryHackMe/Challenges/Snapped-Phish-ing-Line
+---
+layout: post
+title: "TryHackMe: BOTSv2 (Splunk 2) Walkthrough"
+date: 2026-05-01 00:00:00 +0200
+categories: ["Threat Hunting & Triage", "SIEM Investigations"]
+tags: [splunk, botsv2, threat-hunting, blue-team, tryhackme, apt]
+pin: false
+image:
+  path: https://github.com/user-attachments/assets/4e7f6c9d-c9d9-446f-ba8e-478e63777862
+  # This hides it from the internal post header in almost all Chirpy versions
+  preview: false
+  # If the thumbnail is cropped, try adding this class
+  class: img-contain
 ---
 
+# BOTSv2 (Splunk 2) Walkthrough
 
-# Splunk 2
-<img width="1892" height="370" alt="image" src="https://github.com/user-attachments/assets/00561f2a-8e2a-4def-984f-253aa6a3d40d" />
+![BOTSv2 Banner](https://github.com/user-attachments/assets/00561f2a-8e2a-4def-984f-253aa6a3d40d){: .shadow .rounded }
+_Figure 1: BOTSv2 challenge overview._
 
-## BOTSv2 Dataset:
+## Scenario & Dataset
 
-### The data included in this app was generated in August of 2017 by members of Splunk's Security Specialist team - Dave Herrald, Ryan Kovar, Steve Brant, Jim Apger, John Stoner, Ken Westin, David Veuve and James Brodsky. They stood up a few lab environments connected to the Internet. Within the environment they had a few Windows endpoints instrumented with the Splunk Universal Forwarder and Splunk Stream. The forwarders were configured with best practices for Windows endpoint monitoring, including a full Microsoft Sysmon deployment and best practices for Windows Event logging. The environment included a Palo Alto Networks next-generation firewall to capture traffic and provide web proxy services, and Suricata to provide network-based IDS. 
+> **BOTSv2 Dataset:** The data included in this app was generated in August of 2017 by members of Splunk's Security Specialist team. They stood up a few lab environments connected to the Internet. Within the environment, they had a few Windows endpoints instrumented with the Splunk Universal Forwarder and Splunk Stream. The forwarders were configured with best practices for Windows endpoint monitoring, including a full Microsoft Sysmon deployment and best practices for Windows Event logging. The environment included a Palo Alto Networks next-generation firewall to capture traffic and provide web proxy services, and Suricata to provide network-based IDS.
+> 
+> **Role:** In this exercise, you assume the persona of Alice Bluebird, the analyst who successfully assisted Wayne Enterprises and was recommended to Grace Hoppy at Frothly (a beer company) to assist them with their recent issues.
+{: .prompt-warning }
 
-### BOTSv2 Github: https://github.com/splunk/botsv2
+---
 
-#### In this exercise, you assume the persona of Alice Bluebird, the analyst who successfully assisted Wayne Enterprises and was recommended to Grace Hoppy at Frothly (a beer company) to assist them with their recent issues.
+## 100 Series Questions
 
-### What Kinds of Events Do We Have?
-#### The SPL (Splunk Search Processing Language) command metadata can be used to search for the same kind of information that is found in the Data Summary, with the bonus of being able to search within a specific index, if desired. All time-values are returned in EPOCH time, so to make the output user readable, the eval command should be used to provide more human-friendly formatting.
+> **Question:** Amber Turing was hoping for Frothly to be acquired by a potential competitor which fell through, but visited their website to find contact information for their executive team. What is the website domain that she visited?
+{: .prompt-info }
 
-
-## Answer the questions below
->![](https://img.shields.io/badge/Question-blue) Amber Turing was hoping for Frothly to be acquired by a potential competitor which fell through, but visited their website to find contact information for their executive team. What is the website domain that she visited?
-
-
-#### First, its known that the name is Amber, using this in the search 
-```bash 
+First, it is known that the name is Amber. Using this in the search:
+~~~splunk 
 index="botsv2" amber
-```
-<img width="1907" height="679" alt="image" src="https://github.com/user-attachments/assets/5ad195cc-8cef-4dc6-bbd7-a78ce5d208ec" />
+~~~
+{: .nolineno }
 
-about 56,513 events shows up, browsing the `src_ip` field, multiple ips are found
+![Amber search results](https://github.com/user-attachments/assets/5ad195cc-8cef-4dc6-bbd7-a78ce5d208ec){: .shadow .rounded }
+_Figure 2: Initial search for Amber's activity._
 
-<img width="1901" height="793" alt="image" src="https://github.com/user-attachments/assets/65469a35-5d10-48b6-a34f-fe0d46221c13" />
- browsing the logs more, a pan traffic could be seen which is Palo Alto Networks where in the corperates environment the Palo Alto firewall sits between the employer and the internet. 
+About 56,513 events show up. Browsing the `src_ip` field, multiple IPs are found.
 
-Palo Alto has a feature called "User-ID", where they talk directly to the Active Directory server. Whenever Amber turns on her computer and logs in, the firewall records "User Amber is currently using the internal IP X.X.X.X
+![Source IPs](https://github.com/user-attachments/assets/65469a35-5d10-48b6-a34f-fe0d46221c13){: .shadow .rounded }
+_Figure 3: Exploring associated source IPs._
 
-Using this feature, Amber's IP could directly be get through this SPL query 
-```bash 
+Browsing the logs more, PAN traffic can be seen. In corporate environments, the Palo Alto Networks (PAN) firewall sits between the employee and the internet. Palo Alto has a feature called "User-ID", where they talk directly to the Active Directory server. Whenever Amber turns on her computer and logs in, the firewall records "User Amber is currently using the internal IP X.X.X.X".
+
+Using this feature, Amber's IP could be directly found through this SPL query:
+~~~splunk 
 index="botsv2" amber sourcetype="pan:traffic"
-```
-<img width="1861" height="709" alt="image" src="https://github.com/user-attachments/assets/05e5860e-b66f-4b5c-8e55-79f72ac5b1fe" />
+~~~
+{: .nolineno }
 
-scrolling to see the src_ip field, its shown that there is only one source ip in the logs which is `10.0.2.101`
-<img width="1883" height="801" alt="image" src="https://github.com/user-attachments/assets/4951bf07-1ff0-4d43-8100-f2a0a6839316" />
+![PAN Traffic search](https://github.com/user-attachments/assets/05e5860e-b66f-4b5c-8e55-79f72ac5b1fe){: .shadow .rounded }
+_Figure 4: Filtering for PAN traffic to isolate the user IP._
 
-Using this info, the website domain can be found from combininig the IP address with the sourcetype of domains which is `stream:http`
-```bash 
+Scrolling to see the `src_ip` field, it is shown that there is only one source IP in the logs, which is `10.0.2.101`.
+
+![Isolated IP](https://github.com/user-attachments/assets/4951bf07-1ff0-4d43-8100-f2a0a6839316){: .shadow .rounded }
+_Figure 5: Confirming Amber's internal IP address._
+
+Using this info, the website domain can be found by combining the IP address with the sourcetype of domains, which is `stream:http`.
+~~~splunk 
 index="botsv2" 10.0.2.101 sourcetype="stream:http"
-```
-<img width="1900" height="799" alt="image" src="https://github.com/user-attachments/assets/e990a854-9248-4439-af32-fc37d4729e7d" />
+~~~
+{: .nolineno }
 
-still there is much events and site visited, since the required domain Amber used to find contact information for their executive team, it must be industry related! Amber is working in forthly which is a beer manufacturing company, so adding a keyword like `beer` would limit the logs to what its beeing searched 
-```bash 
-index="botsv2" 10.0.2.101 sourcetype="stream:http"
-```
-<img width="1889" height="801" alt="image" src="https://github.com/user-attachments/assets/18d1e11b-213a-4951-bff9-97d703851938" />
-this limited the search to only 12 events, scrolling to explore the site field,
-<img width="1862" height="808" alt="image" src="https://github.com/user-attachments/assets/29682388-f520-43ad-81b3-bfd89a409381" />
+![HTTP Stream](https://github.com/user-attachments/assets/e990a854-9248-4439-af32-fc37d4729e7d){: .shadow .rounded }
+_Figure 6: Viewing HTTP stream logs for Amber's IP._
 
+There are still many events and sites visited. Since the required domain Amber used to find contact information for their executive team must be industry-related (Amber is working in Frothly, which is a beer manufacturing company), adding a keyword like `beer` limits the logs to what is being searched.
+~~~splunk 
+index="botsv2" 10.0.2.101 sourcetype="stream:http" beer
+~~~
+{: .nolineno }
 
->![](https://img.shields.io/badge/Answer-success) www.berkbeer.com
+![Beer keyword filter](https://github.com/user-attachments/assets/18d1e11b-213a-4951-bff9-97d703851938){: .shadow .rounded }
+_Figure 7: Narrowing down results with contextual keywords._
 
-<br> 
+This limited the search to only 12 events. Scrolling to explore the site field reveals the domain.
+
+![Site field results](https://github.com/user-attachments/assets/29682388-f520-43ad-81b3-bfd89a409381){: .shadow .rounded }
+_Figure 8: Identifying the competitor's domain._
+
+> **Answer:** `www.berkbeer.com`
+{: .prompt-tip }
 <br>
-<br> 
-<br>
 
-> ![](https://img.shields.io/badge/Question-blue) **Amber found the executive contact information and sent him an email. What image file displayed the executive's contact information? Answer example: /path/image.ext**
+---
 
-since Amber was browsing www.berkbeer.com to find the executive contact information, using the website domain will help find executives informations Amber found 
-```bash
+> **Question:** Amber found the executive contact information and sent him an email. What image file displayed the executive's contact information? Answer example: /path/image.ext
+{: .prompt-info }
+
+Since Amber was browsing www.berkbeer.com to find the executive contact information, using the website domain will help find the executive's information Amber found.
+~~~splunk
 index="botsv2" www.berkbeer.com
-```
-<img width="1901" height="714" alt="image" src="https://github.com/user-attachments/assets/2dcd94ea-2b0c-4a95-b73f-b6d5e825c34c" />
+~~~
+{: .nolineno }
 
-Scrolling to the `filename` field, a list of `.png` files is seen, where one of the images name is `ceoberk`
-<img width="1909" height="802" alt="image" src="https://github.com/user-attachments/assets/2231c7a1-8d40-4010-88df-14188076ce45" />
+![Berkbeer search](https://github.com/user-attachments/assets/2dcd94ea-2b0c-4a95-b73f-b6d5e825c34c){: .shadow .rounded }
+_Figure 9: Searching the competitor domain for image assets._
 
-  <br>
-  <br>
-  
->![](https://img.shields.io/badge/Answer-success) /images/ceoberk.png
+Scrolling to the `filename` field, a list of `.png` files is seen, where one of the images' name is `ceoberk`.
 
-<br> 
+![Image filename](https://github.com/user-attachments/assets/2231c7a1-8d40-4010-88df-14188076ce45){: .shadow .rounded }
+_Figure 10: Identifying the CEO's contact image._
+
+> **Answer:** `/images/ceoberk.png`
+{: .prompt-tip }
 <br>
-<br> 
-<br>
 
-> ![](https://img.shields.io/badge/Question-blue) **What is the CEO's name? Provide the first and last name.**
+---
 
-The image name could reveal only the ceo last name, Assuming Amber opened the image and knew the first name then tried to cmmunicate with them through the email. Now the domain `berkbeer.com` is used again along with `smtp` traffic and converting all data to raw to facilitate the search
-```bash
+> **Question:** What is the CEO's name? Provide the first and last name.
+{: .prompt-info }
+
+The image name could reveal only the CEO's last name. Assuming Amber opened the image and knew the first name, then tried to communicate with them through email, the domain `berkbeer.com` is used again along with `smtp` traffic and converting all data to raw to facilitate the search.
+~~~splunk
 index="botsv2" berkbeer.com sourcetype="stream:smtp" 
-|  table _time _raw
-```
-now searching for the name using `ctrl+F` and the keyword ` Berk`
-<img width="1915" height="797" alt="image" src="https://github.com/user-attachments/assets/7acd668f-9feb-4eca-a0a6-73713b122ae0" />
+| table _time _raw
+~~~
+{: .nolineno }
 
-<br> 
+Now searching for the name using `Ctrl+F` and the keyword `Berk` reveals the full name.
 
->![](https://img.shields.io/badge/Answer-success) Martin Berk
-<br>
-<br>
-<br>
-<br>
+![CEO name search](https://github.com/user-attachments/assets/7acd668f-9feb-4eca-a0a6-73713b122ae0){: .shadow .rounded }
+_Figure 11: Locating the CEO's full name in SMTP traffic._
 
-> ![](https://img.shields.io/badge/Question-blue) **What is the CEO's email address?**
-using the same previous approach but search for `berk@` this time would show the ceo email 
-<img width="1917" height="731" alt="image" src="https://github.com/user-attachments/assets/b6f70d27-3abf-42e0-9606-63a01478107f" />
-
-
-
->![](https://img.shields.io/badge/Answer-success) mberk@berkbeer.com
-<br>
-<br>
-<br>
+> **Answer:** `Martin Berk`
+{: .prompt-tip }
 <br>
 
-> ![](https://img.shields.io/badge/Question-blue) **After the initial contact with the CEO, Amber contacted another employee at this competitor. What is that employee's email address?**
+---
 
-using the same approach, searching for `@berk` would provide any other emails from the same domain 
-which was in this case only 
+> **Question:** What is the CEO's email address?
+{: .prompt-info }
 
-<img width="1910" height="784" alt="image" src="https://github.com/user-attachments/assets/7580ff27-c6ee-45eb-811d-b66ba0c25c30" />
-<br> 
+Using the same previous approach but searching for `berk@` this time shows the CEO's email.
+
+![CEO email search](https://github.com/user-attachments/assets/b6f70d27-3abf-42e0-9606-63a01478107f){: .shadow .rounded }
+_Figure 12: Extracting the CEO's email address._
+
+> **Answer:** `mberk@berkbeer.com`
+{: .prompt-tip }
 <br>
 
-> ![](https://img.shields.io/badge/Answer-success) hbernhard@berkbeer.com
-     
-<br>
-<br>
-<br>
-<br>
+---
 
-> ![](https://img.shields.io/badge/Question-blue) **What is the name of the file attachment that Amber sent to a contact at the competitor?**
-Converting back the logs to a `show syntax highlighted` for better vision, in the 1st log of the same search there is a `attach_filename` if expanded, the attachment file is shown  
-<img width="1906" height="719" alt="image" src="https://github.com/user-attachments/assets/37babaae-3a73-468a-8cb9-164811d5906a" />
+> **Question:** After the initial contact with the CEO, Amber contacted another employee at this competitor. What is that employee's email address?
+{: .prompt-info }
 
-<br> 
-<br>
+Using the same approach, searching for `@berk` provides any other emails from the same domain, which in this case was only one other address.
 
-> ![](https://img.shields.io/badge/Answer-success)  Saccharomyces_cerevisiae_patent.docx
+![Other employee email](https://github.com/user-attachments/assets/7580ff27-c6ee-45eb-811d-b66ba0c25c30){: .shadow .rounded }
+_Figure 13: Finding additional contacts at the competitor._
 
-<br>
-<br>
-<br>
+> **Answer:** `hbernhard@berkbeer.com`
+{: .prompt-tip }
 <br>
 
-> ![](https://img.shields.io/badge/Question-blue) **What is Amber's personal email address?**
-In the same email log of previous question, its notices that there is a base64 bit encoding 
-<img width="1906" height="768" alt="image" src="https://github.com/user-attachments/assets/3a471833-097f-4def-8096-d8ccc22f22cd" />
+---
 
-Taking a look at the content, there is an encoded text that might be suspicious
-<img width="1891" height="730" alt="image" src="https://github.com/user-attachments/assets/ff0cf572-a6e7-40d8-9b27-5e74840f4509" />
+> **Question:** What is the name of the file attachment that Amber sent to a contact at the competitor?
+{: .prompt-info }
 
-Converting it back from base64 encoding using CyberChef 
-<img width="1911" height="722" alt="image" src="https://github.com/user-attachments/assets/18aeb9d8-7af2-4d55-8b9a-714dae6220cf" />
+Converting back the logs to a `show syntax highlighted` view for better vision, in the 1st log of the same search there is an `attach_filename`. If expanded, the attachment file is shown.
 
+![Attachment filename](https://github.com/user-attachments/assets/37babaae-3a73-468a-8cb9-164811d5906a){: .shadow .rounded }
+_Figure 14: Identifying the leaked document._
 
-
-
-> ![](https://img.shields.io/badge/Answer-success) ambersthebest@yeastiebeastie.com
-<br>
-<br>
-<br>
+> **Answer:** `Saccharomyces_cerevisiae_patent.docx`
+{: .prompt-tip }
 <br>
 
-### 200 series questions
-> ![](https://img.shields.io/badge/Question-blue) **What version of TOR Browser did Amber install to obfuscate her web browsing? Answer guidance: Numeric with one or more delimiter.**
+---
 
+> **Question:** What is Amber's personal email address?
+{: .prompt-info }
 
-To know the version of tor, the tor keyword was used in the search along with `amber`
-```bash
+In the same email log of the previous question, it's noticed that there is a Base64 encoding.
+
+![Base64 email data](https://github.com/user-attachments/assets/3a471833-097f-4def-8096-d8ccc22f22cd){: .shadow .rounded }
+_Figure 15: Spotting encoded content in the email body._
+
+Taking a look at the content, there is an encoded text that might be suspicious.
+
+![Encoded text block](https://github.com/user-attachments/assets/ff0cf572-a6e7-40d8-9b27-5e74840f4509){: .shadow .rounded }
+_Figure 16: Extracting the Base64 payload._
+
+Converting it back from Base64 encoding using CyberChef reveals her personal email.
+
+![CyberChef decode](https://github.com/user-attachments/assets/18aeb9d8-7af2-4d55-8b9a-714dae6220cf){: .shadow .rounded }
+_Figure 17: Decoding the payload with CyberChef._
+
+> **Answer:** `ambersthebest@yeastiebeastie.com`
+{: .prompt-tip }
+<br>
+
+---
+
+## 200 Series Questions
+
+> **Question:** What version of TOR Browser did Amber install to obfuscate her web browsing? Answer guidance: Numeric with one or more delimiter.
+{: .prompt-info }
+
+To know the version of Tor, the Tor keyword was used in the search along with `amber`.
+~~~splunk
 index="botsv2" amber tor
-```
+~~~
+{: .nolineno }
 
-<img width="1908" height="662" alt="Screenshot 2026-04-28 200903" src="https://github.com/user-attachments/assets/0918d533-94b9-41c9-a759-0511c67b47c9" />
+![Tor search](https://github.com/user-attachments/assets/0918d533-94b9-41c9-a759-0511c67b47c9){: .shadow .rounded }
+_Figure 18: Hunting for Tor browser usage._
 
-Browsing the interesting fields, the app field contains the version of the tor browser as shown 
+Browsing the interesting fields, the `app` field contains the version of the Tor browser as shown.
 
-<img width="1743" height="734" alt="Screenshot 2026-04-28 201029" src="https://github.com/user-attachments/assets/0f4dd824-eabd-46ea-af7c-5706c156125c" />
+![Tor version field](https://github.com/user-attachments/assets/0f4dd824-eabd-46ea-af7c-5706c156125c){: .shadow .rounded }
+_Figure 19: Extracting the specific version number._
 
-
-
-> ![](https://img.shields.io/badge/Answer-success) 7.0.4
+> **Answer:** `7.0.4`
+{: .prompt-tip }
 <br>
-<br>
-<br>
-<br>
 
-> ![](https://img.shields.io/badge/Question-blue) **What is the public IPv4 address of the server running www.brewertalk.com?**
+---
 
-Since the requests sent to browse the website are of port 80 and the server is the destination port to the requests 
-filtering the website link and the port 80 will show up the private and public IPs of the server hosting the website 
-```bash
+> **Question:** What is the public IPv4 address of the server running www.brewertalk.com?
+{: .prompt-info }
+
+Since the requests sent to browse the website are on port 80 and the server is the destination port for the requests, filtering the website link and port 80 will show up the private and public IPs of the server hosting the website.
+~~~splunk
 index="botsv2" www.brewertalk.com dest_port=80
-```
-<img width="1899" height="712" alt="Screenshot 2026-04-28 203007" src="https://github.com/user-attachments/assets/cb2c40de-edab-46eb-a501-2b3142e14ebc" />
+~~~
+{: .nolineno }
 
-Expolring the interesting fields, the Public IP of the server is found 
-<img width="1906" height="786" alt="Screenshot 2026-04-28 203104" src="https://github.com/user-attachments/assets/df46e637-fc96-4489-a2dd-432ad81dca3e" />
+![Brewertalk search](https://github.com/user-attachments/assets/cb2c40de-edab-46eb-a501-2b3142e14ebc){: .shadow .rounded }
+_Figure 20: Filtering for HTTP traffic to Brewertalk._
 
+Exploring the interesting fields, the Public IP of the server is found.
 
+![Public IP](https://github.com/user-attachments/assets/df46e637-fc96-4489-a2dd-432ad81dca3e){: .shadow .rounded }
+_Figure 21: Locating the destination IP address._
 
-> ![](https://img.shields.io/badge/Answer-success) 52.42.208.228
+> **Answer:** `52.42.208.228`
+{: .prompt-tip }
 <br>
-<br>
-<br>
-<br>
 
-> ![](https://img.shields.io/badge/Question-blue) **Provide the IP address of the system used to run a web vulnerability scan against www.brewertalk.com.**
+---
 
-Since tor was used to collect data from the website, the website name along with the keyword tor could be used to find the IP address running the scan 
-```bash
+> **Question:** Provide the IP address of the system used to run a web vulnerability scan against www.brewertalk.com.
+{: .prompt-info }
+
+Since Tor was used to collect data from the website, the website name along with the keyword Tor could be used to find the IP address running the scan.
+~~~splunk
 index="botsv2" www.brewertalk.com tor
-```
-Expolring the src_ip field
-<img width="1909" height="727" alt="Screenshot 2026-04-28 203436" src="https://github.com/user-attachments/assets/ae5d6301-2414-44dd-96df-78f8d9985c98" />
+~~~
+{: .nolineno }
 
-  
-  > ![](https://img.shields.io/badge/Answer-success) 45.77.65.211
+Exploring the `src_ip` field reveals the attacker's IP.
 
+![Attacker IP](https://github.com/user-attachments/assets/ae5d6301-2414-44dd-96df-78f8d9985c98){: .shadow .rounded }
+_Figure 22: Identifying the IP running the vulnerability scan._
 
-> ![](https://img.shields.io/badge/Question-blue) **The IP address from Q#2 is also being used by a likely different piece of software to attack a URI path. What is the URI path? Answer guidance: Include the leading forward slash in your answer. Do not include the query string or other parts of the URI. Answer example: /phpinfo.php**
+> **Answer:** `45.77.65.211`
+{: .prompt-tip }
+<br>
 
-Using the attacker IP revealed in the previous questions along with searching for logs that the `/*` where it indicates a path 
-```bash
+---
+
+> **Question:** The IP address from Q#2 is also being used by a likely different piece of software to attack a URI path. What is the URI path? Answer guidance: Include the leading forward slash in your answer. Do not include the query string or other parts of the URI. Answer example: /phpinfo.php
+{: .prompt-info }
+
+Using the attacker IP revealed in the previous questions along with searching for logs that have `/*` (which indicates a path).
+~~~splunk
 index="botsv2" src_ip="45.77.65.211" "/*"
-```
-<img width="1906" height="669" alt="Screenshot 2026-04-28 210610" src="https://github.com/user-attachments/assets/b49c6681-23af-46f3-a174-d81fb8b4ccbc" />
+~~~
+{: .nolineno }
 
-Expolring the uri_path field which indicated that `/member.php` was the most requested which can indicate that members info is being comprimised
-<img width="1862" height="691" alt="Screenshot 2026-04-28 210821" src="https://github.com/user-attachments/assets/16792f1c-fc70-498c-8080-91ed4570c786" />
+![Path scan](https://github.com/user-attachments/assets/b49c6681-23af-46f3-a174-d81fb8b4ccbc){: .shadow .rounded }
+_Figure 23: Tracking the attacker's path enumeration._
 
+Exploring the `uri_path` field indicates that `/member.php` was the most requested, which can indicate that members' info is being compromised.
 
-  
-  > ![](https://img.shields.io/badge/Answer-success) /member.php
+![Member path](https://github.com/user-attachments/assets/16792f1c-fc70-498c-8080-91ed4570c786){: .shadow .rounded }
+_Figure 24: Finding the targeted URI path._
 
-> ![](https://img.shields.io/badge/Question-blue) **What SQL function is being abused on the URI path from the previous question?**
+> **Answer:** `/member.php`
+{: .prompt-tip }
+<br>
 
-Browsing the detals and content of the logs filtered from the `/member.php` path, there is a clear SQL query that uses a function
-<img width="1897" height="668" alt="Screenshot 2026-04-28 210946" src="https://github.com/user-attachments/assets/d50a16ef-ee27-4c0b-a88c-a8400ab4dea1" />
+---
 
-  > ![](https://img.shields.io/badge/Answer-success) updatexml
+> **Question:** What SQL function is being abused on the URI path from the previous question?
+{: .prompt-info }
 
-> ![](https://img.shields.io/badge/Question-blue) **What was the value of the cookie that Kevin's browser transmitted to the malicious URL as part of an XSS attack? Answer guidance: All digits. Not the cookie name or symbols like an equal sign.**
+Browsing the details and content of the logs filtered from the `/member.php` path, there is a clear SQL query that uses a function.
 
-As the XSS attack was mentioned, its obvious to include a related keyword like `script` which is used in XSS attack. 
-Using the username kevin along with the script keyword 
-```bash
+![SQL function](https://github.com/user-attachments/assets/d50a16ef-ee27-4c0b-a88c-a8400ab4dea1){: .shadow .rounded }
+_Figure 25: Identifying the SQL injection payload._
+
+> **Answer:** `updatexml`
+{: .prompt-tip }
+<br>
+
+---
+
+> **Question:** What was the value of the cookie that Kevin's browser transmitted to the malicious URL as part of an XSS attack? Answer guidance: All digits. Not the cookie name or symbols like an equal sign.
+{: .prompt-info }
+
+As the XSS attack was mentioned, it's obvious to include a related keyword like `script` which is used in XSS attacks. Using the username Kevin along with the script keyword:
+~~~splunk
 index="botsv2" kevin *script
-```
-browsing the cookies field shows 4 cookies, the last one is suspcious because along with the sid, there is also a adminsid which indicates an escalation of privilages using the same cookie token 
-<img width="1893" height="662" alt="Screenshot 2026-04-28 212508" src="https://github.com/user-attachments/assets/e240416d-39ac-4eeb-800e-f7ef3319a6d6" />
+~~~
+{: .nolineno }
 
+Browsing the cookies field shows 4 cookies; the last one is suspicious because along with the sid, there is also an `adminsid` which indicates an escalation of privileges using the same cookie token.
 
-  > ![](https://img.shields.io/badge/Answer-success) 1502408189
+![Cookie analysis](https://github.com/user-attachments/assets/e240416d-39ac-4eeb-800e-f7ef3319a6d6){: .shadow .rounded }
+_Figure 26: Locating the compromised cookie._
 
-> ![](https://img.shields.io/badge/Question-blue) **What brewertalk.com username was maliciously created by a spear phishing attack?**
+> **Answer:** `1502408189`
+{: .prompt-tip }
+<br>
 
-Expanding the search to see what the cookie token was used for and filtering it out by clicking on the cookie 
-<img width="1910" height="674" alt="image" src="https://github.com/user-attachments/assets/f9581aa2-d494-429f-aed5-f6b3e76f687b" />
+---
 
-Its required to get the username that was created by spear phising, so search for username in the logs
-<img width="1909" height="722" alt="image" src="https://github.com/user-attachments/assets/3ef98ee6-1af4-419e-a503-b8fc651aab56" />
+> **Question:** What brewertalk.com username was maliciously created by a spear phishing attack?
+{: .prompt-info }
 
+Expanding the search to see what the cookie token was used for and filtering it out by clicking on the cookie.
 
-  > ![](https://img.shields.io/badge/Answer-success) kIagerfield
+![Cookie filter](https://github.com/user-attachments/assets/f9581aa2-d494-429f-aed5-f6b3e76f687b){: .shadow .rounded }
+_Figure 27: Tracing the stolen session token._
 
+It's required to get the username that was created by spear-phishing, so search for `username` in the logs.
 
+![Spear phishing username](https://github.com/user-attachments/assets/3ef98ee6-1af4-419e-a503-b8fc651aab56){: .shadow .rounded }
+_Figure 28: Discovering the maliciously created account._
 
+> **Answer:** `kIagerfield`
+{: .prompt-tip }
+<br>
 
+---
 
+> **Question:** Mallory's critical PowerPoint presentation on her MacBook gets encrypted by ransomware on August 18. What is the name of this file after it was encrypted?
+{: .prompt-info }
 
-> ![](https://img.shields.io/badge/Question-blue) **Mallory's critical PowerPoint presentation on her MacBook gets encrypted by ransomware on August 18. What is the name of this file after it was encrypted?**
-
-Using the username mallory keyword along with the `*ppt*` reveals all the ppt files of mallory 
-```bash
+Using the username Mallory keyword along with `*ppt*` reveals all the PPT files of Mallory.
+~~~splunk
 index="botsv2" mallory *ppt*
-```
-Scrolling and exploring the interestinf fields, a filname field was found with 4 values where it contains two encrypted ppt files, as it was mentioned that the file was critical then its recommened that the file doen't include `old` 
-<img width="1907" height="633" alt="image" src="https://github.com/user-attachments/assets/05c894bc-3b59-422a-92d7-f0b5e7efa9fd" />
+~~~
+{: .nolineno }
 
-  > ![](https://img.shields.io/badge/Answer-success) Frothly_marketing_campaign_Q317.pptx.crypt
+Scrolling and exploring the interesting fields, a `filename` field was found with 4 values where it contains two encrypted PPT files. As it was mentioned that the file was critical, it's recommended that the file doesn't include "old".
 
+![Encrypted PPT](https://github.com/user-attachments/assets/05c894bc-3b59-422a-92d7-f0b5e7efa9fd){: .shadow .rounded }
+_Figure 29: Identifying the encrypted PowerPoint file._
 
-> ![](https://img.shields.io/badge/Question-blue) **There is a Games of Thrones movie file that was encrypted as well. What season and episode is it? **
+> **Answer:** `Frothly_marketing_campaign_Q317.pptx.crypt`
+{: .prompt-tip }
+<br>
 
-Trying to search for the encrypted file name using the mallory keyword didn't give any results about the rquired movie
-so maybe the movie was in another user. 
-Changing the SPL query to be
-```bash
+---
+
+> **Question:** There is a Games of Thrones movie file that was encrypted as well. What season and episode is it?
+{: .prompt-info }
+
+Trying to search for the encrypted file name using the Mallory keyword didn't give any results about the required movie, so maybe the movie belonged to another user. Changing the SPL query to be:
+~~~splunk
 index="botsv2" *.crypt (*GoT* OR *Game* OR *Thrones*)
-```
-<img width="1900" height="683" alt="image" src="https://github.com/user-attachments/assets/93f06c6e-64ca-4b8f-a83a-167d4f6a25ad" />
+~~~
+{: .nolineno }
 
-and browsing the logs content, it was found that the movie encryped was S07E02
-<img width="1906" height="777" alt="image" src="https://github.com/user-attachments/assets/417d574a-8c84-494d-8642-43ab6319267f" />
+![GoT search](https://github.com/user-attachments/assets/93f06c6e-64ca-4b8f-a83a-167d4f6a25ad){: .shadow .rounded }
+_Figure 30: Searching for the encrypted video file._
 
+Browsing the log content, it was found that the movie encrypted was S07E02.
 
+![GoT episode](https://github.com/user-attachments/assets/417d574a-8c84-494d-8642-43ab6319267f){: .shadow .rounded }
+_Figure 31: Confirming the season and episode._
 
-  > ![](https://img.shields.io/badge/Answer-success) S07E02
+> **Answer:** `S07E02`
+{: .prompt-tip }
+<br>
 
+---
 
-> ![](https://img.shields.io/badge/Question-blue) **Kevin Lagerfield used a USB drive to move malware onto kutekitten, Mallory's personal MacBook. She ran the malware, which obfuscates itself during execution. Provide the vendor name of the USB drive Kevin likely used. Answer Guidance: Use time correlation to identify the USB drive.**
+> **Question:** Kevin Lagerfield used a USB drive to move malware onto kutekitten, Mallory's personal MacBook. She ran the malware, which obfuscates itself during execution. Provide the vendor name of the USB drive Kevin likely used. Answer Guidance: Use time correlation to identify the USB drive.
+{: .prompt-info }
 
-Using the info i the question in the query, its searched for the `kutekitten` keyword along with the usb, but there are about 40 events which is still alot 
-```bash
+Using the info in the question in the query, it is searched for the `kutekitten` keyword along with the usb, but there are about 40 events which is still a lot.
+~~~splunk
 index="botsv2" kutekitten usb
-```
-<img width="1913" height="582" alt="image" src="https://github.com/user-attachments/assets/d8b31883-5458-4c56-b926-49797835fac2" />
+~~~
+{: .nolineno }
 
-Since the question is asking for the vendor of the usb, adding the vendor keyword revealed info about the usb directly 
-```bash
+![USB events](https://github.com/user-attachments/assets/d8b31883-5458-4c56-b926-49797835fac2){: .shadow .rounded }
+_Figure 32: Initial search for USB insertions._
+
+Since the question is asking for the vendor of the usb, adding the vendor keyword revealed info about the usb directly.
+~~~splunk
 index="botsv2" kutekitten usb vendor
-```
-<img width="1885" height="667" alt="image" src="https://github.com/user-attachments/assets/b7ec37ab-1ae3-4176-a5c8-fd6e9fbdfede" />
+~~~
+{: .nolineno }
 
-Using the serial and id to search for the usb online, the vendor is found 
-<img width="1436" height="455" alt="image" src="https://github.com/user-attachments/assets/ce273239-1e76-4266-8fa2-c12ca11a6106" />
+![USB vendor search](https://github.com/user-attachments/assets/b7ec37ab-1ae3-4176-a5c8-fd6e9fbdfede){: .shadow .rounded }
+_Figure 33: Filtering for USB vendor information._
 
+Using the serial and ID to search for the USB online, the vendor is found.
 
+![USB lookup](https://github.com/user-attachments/assets/ce273239-1e76-4266-8fa2-c12ca11a6106){: .shadow .rounded }
+_Figure 34: Resolving the vendor ID online._
 
-  > ![](https://img.shields.io/badge/Answer-success) Alcor Micro Corp.
+> **Answer:** `Alcor Micro Corp.`
+{: .prompt-tip }
+<br>
 
-> ![](https://img.shields.io/badge/Question-blue) **What programming language is at least part of the malware from the question above written in?**
+---
 
-Info about the malware such as its programming language couldn't be found in logs, its usually in virusTotal when searching for the hash of the malware 
-So to answer this question, the hash of the malware must be found first 
-Since the malware came from the USB, invistigating the logs right after the usb logs and searching for the keyword sha256 in it could reveal the malware hash 
+> **Question:** What programming language is at least part of the malware from the question above written in?
+{: .prompt-info }
 
-First search for the usb logs 
-```bash
+Info about the malware, such as its programming language, couldn't be found in logs; it's usually in VirusTotal when searching for the hash of the malware. So to answer this question, the hash of the malware must be found first. Since the malware came from the USB, investigating the logs right after the USB logs and searching for the keyword `sha256` in it could reveal the malware hash.
+
+First, search for the USB logs:
+~~~splunk
 index="botsv2" kutekitten usb vendor
-```
-<img width="1895" height="600" alt="image" src="https://github.com/user-attachments/assets/c1cfb8a2-8906-4411-812c-c04126484e0c" />
+~~~
+{: .nolineno }
 
+![USB logs](https://github.com/user-attachments/assets/c1cfb8a2-8906-4411-812c-c04126484e0c){: .shadow .rounded }
+_Figure 35: Returning to the USB insertion event._
 
-Then the timestamp of the recent log was clicked to select the logs with times after that log 
-<img width="1905" height="621" alt="image" src="https://github.com/user-attachments/assets/4e24fcd6-141b-4985-aaf7-e45d17db93e1" />
+Then the timestamp of the recent log was clicked to select the logs with times after that log.
 
+![Time correlation](https://github.com/user-attachments/assets/4e24fcd6-141b-4985-aaf7-e45d17db93e1){: .shadow .rounded }
+_Figure 36: Correlating events immediately following insertion._
 
-Sorting the logs from oldest to newest and  display them as raw data would facilitate the search for the `sha256` keyword 
-```bash
+Sorting the logs from oldest to newest and displaying them as raw data would facilitate the search for the `sha256` keyword.
+~~~splunk
 index=botsv2 kutekitten usb
 | table _time _raw 
 | sort + _time
-```
-<img width="1900" height="614" alt="image" src="https://github.com/user-attachments/assets/18d10a55-6d36-4fa2-945f-b5bf21bc6326" />
+~~~
+{: .nolineno }
 
-After gerring the hash, looking it up in VirusTotal reveals the language that this malware was made with 
-<img width="1910" height="906" alt="image" src="https://github.com/user-attachments/assets/1448a57b-9723-481a-a800-a8797eae9496" />
+![Hash search](https://github.com/user-attachments/assets/18d10a55-6d36-4fa2-945f-b5bf21bc6326){: .shadow .rounded }
+_Figure 37: Locating the SHA256 hash in raw events._
 
-  > ![](https://img.shields.io/badge/Answer-success) Perl
+After getting the hash, looking it up in VirusTotal reveals the language that this malware was made with.
 
+![VirusTotal language](https://github.com/user-attachments/assets/1448a57b-9723-481a-a800-a8797eae9496){: .shadow .rounded }
+_Figure 38: Analyzing the sample in VirusTotal._
 
+> **Answer:** `Perl`
+{: .prompt-tip }
+<br>
 
-> ![](https://img.shields.io/badge/Question-blue) **When was this malware first seen in the wild? Answer Guidance: YYYY-MM-DD**
+---
 
-Browsing the VirusTotal details tab 
-<img width="1895" height="928" alt="image" src="https://github.com/user-attachments/assets/e6bd4e2a-0429-4441-93dc-03587689bc40" />
-> ![](https://img.shields.io/badge/Answer-success) 2017-01-17
+> **Question:** When was this malware first seen in the wild? Answer Guidance: YYYY-MM-DD
+{: .prompt-info }
 
-> ![](https://img.shields.io/badge/Question-blue) **The malware infecting kutekitten uses dynamic DNS destinations to communicate with two C&C servers shortly after installation. What is the fully-qualified domain name (FQDN) of the first (alphabetically) of these destinations?**
+Browsing the VirusTotal details tab gives the exact date.
 
-Browsing the VirusTotal relations tab, different domains was seen, ignore the green safe domain.
-The answer is the first suspicious domain 
-<img width="1866" height="922" alt="image" src="https://github.com/user-attachments/assets/686963c5-7f9c-417f-849b-392911147908" />
+![VirusTotal history](https://github.com/user-attachments/assets/e6bd4e2a-0429-4441-93dc-03587689bc40){: .shadow .rounded }
+_Figure 39: Checking the first submission date._
 
-> ![](https://img.shields.io/badge/Answer-success) eidk.duckdns.org
+> **Answer:** `2017-01-17`
+{: .prompt-tip }
+<br>
 
-> ![](https://img.shields.io/badge/Question-blue) **From the question above, what is the fully-qualified domain name (FQDN) of the second (alphabetically) contacted C&C server?**
+---
 
-Browsing the VirusTotal relations tab, different domains was seen, ignore the green safe domain.
-The answer is the second suspicious domain 
-<img width="1906" height="918" alt="image" src="https://github.com/user-attachments/assets/6a5fe0f3-ff93-4199-8930-bd6d0fa1f587" />
+> **Question:** The malware infecting kutekitten uses dynamic DNS destinations to communicate with two C&C servers shortly after installation. What is the fully-qualified domain name (FQDN) of the first (alphabetically) of these destinations?
+{: .prompt-info }
 
+Browsing the VirusTotal relations tab, different domains were seen. Ignoring the green safe domain, the answer is the first suspicious domain.
 
-> ![](https://img.shields.io/badge/Answer-success) eidk.hopto.org
+![First C2 domain](https://github.com/user-attachments/assets/686963c5-7f9c-417f-849b-392911147908){: .shadow .rounded }
+_Figure 40: Identifying the primary C2 infrastructure._
 
-### 400 series Questions
+> **Answer:** `eidk.duckdns.org`
+{: .prompt-tip }
+<br>
 
-> ![](https://img.shields.io/badge/Question-blue) **A Federal law enforcement agency reports that Taedonggang often spear phishes its victims with zip files that have to be opened with a password. What is the name of the attachment sent to Frothly by a malicious Taedonggang actor?**
+---
 
-Since it's a spear phishing attack, the most common way is thrugh the email, so filtering the stmp traffic along with the `.zip` files extensions reveals the zip
-```bash
+> **Question:** From the question above, what is the fully-qualified domain name (FQDN) of the second (alphabetically) contacted C&C server?
+{: .prompt-info }
+
+Browsing the VirusTotal relations tab, the answer is the second suspicious domain.
+
+![Second C2 domain](https://github.com/user-attachments/assets/6a5fe0f3-ff93-4199-8930-bd6d0fa1f587){: .shadow .rounded }
+_Figure 41: Identifying the fallback C2 infrastructure._
+
+> **Answer:** `eidk.hopto.org`
+{: .prompt-tip }
+<br>
+
+---
+
+## 400 Series Questions
+
+> **Question:** A Federal law enforcement agency reports that Taedonggang often spear phishes its victims with zip files that have to be opened with a password. What is the name of the attachment sent to Frothly by a malicious Taedonggang actor?
+{: .prompt-info }
+
+Since it's a spear phishing attack, the most common way is through email, so filtering the SMTP traffic along with `.zip` file extensions reveals the zip.
+~~~splunk
 index="botsv2"  *.zip sourcetype="stream:smtp"
-```
-<img width="1890" height="654" alt="image" src="https://github.com/user-attachments/assets/14eef490-2d6e-4cee-a4de-854dc62f33b7" />
+~~~
+{: .nolineno }
 
-Exploring the interesting fields, a field named `attach_filename()` has a zip in it 
-<img width="1902" height="646" alt="image" src="https://github.com/user-attachments/assets/c1ff1664-c20e-4936-a26c-80c66443b36b" />
+![ZIP attachment search](https://github.com/user-attachments/assets/14eef490-2d6e-4cee-a4de-854dc62f33b7){: .shadow .rounded }
+_Figure 42: Hunting for malicious ZIP attachments._
 
-> ![](https://img.shields.io/badge/Answer-success) invoice.zip
+Exploring the interesting fields, a field named `attach_filename()` has the target file in it.
 
+![Attachment filename](https://github.com/user-attachments/assets/c1ff1664-c20e-4936-a26c-80c66443b36b){: .shadow .rounded }
+_Figure 43: Extracting the spear phishing payload name._
 
-> ![](https://img.shields.io/badge/Question-blue) **What is the password to open the zip file?**
+> **Answer:** `invoice.zip`
+{: .prompt-tip }
+<br>
 
-Filtering out the log of the file by clicking on its name then converting the log to raw text reveals the details of the email
-<img width="1893" height="687" alt="image" src="https://github.com/user-attachments/assets/9382703e-b9e3-4b65-a0e3-b2c6c7add045" />
+---
 
-Then a search for the password keyword is made to reveal the password
-<img width="1893" height="687" alt="image" src="https://github.com/user-attachments/assets/752335ee-2af3-4d6a-9546-ce18bd72b2e9" />
+> **Question:** What is the password to open the zip file?
+{: .prompt-info }
 
-> ![](https://img.shields.io/badge/Answer-success) 912345678
+Filtering out the log of the file by clicking on its name then converting the log to raw text reveals the details of the email.
 
-> ![](https://img.shields.io/badge/Question-blue) **The Taedonggang APT group encrypts most of their traffic with SSL. What is the "SSL Issuer" that they use for the majority of their traffic? Answer guidance: Copy the field exactly, including spaces.**
+![Raw email body](https://github.com/user-attachments/assets/9382703e-b9e3-4b65-a0e3-b2c6c7add045){: .shadow .rounded }
+_Figure 44: Inspecting the raw email contents._
 
-Using the keywords of ssl and issuer in the spl query 
-```bash
+Then a search for the password keyword is made to reveal the password.
+
+![Password extraction](https://github.com/user-attachments/assets/752335ee-2af3-4d6a-9546-ce18bd72b2e9){: .shadow .rounded }
+_Figure 45: Finding the password provided in the email body._
+
+> **Answer:** `912345678`
+{: .prompt-tip }
+<br>
+
+---
+
+> **Question:** The Taedonggang APT group encrypts most of their traffic with SSL. What is the "SSL Issuer" that they use for the majority of their traffic? Answer guidance: Copy the field exactly, including spaces.
+{: .prompt-info }
+
+Using the keywords of SSL and issuer in the SPL query:
+~~~splunk
 index="botsv2" ssl issuer
-```
-<img width="1879" height="631" alt="image" src="https://github.com/user-attachments/assets/9a59a17f-2f55-43b1-ad59-6fc42b68ed7c" />
+~~~
+{: .nolineno }
 
-Exploring the interesting field after, `ssl_issuer` filed is found where most of the traffic include `C = US` in it 
-<img width="1885" height="599" alt="image" src="https://github.com/user-attachments/assets/d8d9e392-bf8d-411c-bd15-aa5b44e01492" />
+![SSL issuer search](https://github.com/user-attachments/assets/9a59a17f-2f55-43b1-ad59-6fc42b68ed7c){: .shadow .rounded }
+_Figure 46: Searching for SSL certificate issuers._
 
+Exploring the interesting fields after, `ssl_issuer` field is found where most of the traffic includes `C = US` in it.
 
-> ![](https://img.shields.io/badge/Answer-success) C=US
+![Issuer field](https://github.com/user-attachments/assets/d8d9e392-bf8d-411c-bd15-aa5b44e01492){: .shadow .rounded }
+_Figure 47: Extracting the specific issuer string._
 
+> **Answer:** `C=US`
+{: .prompt-tip }
+<br>
 
-> ![](https://img.shields.io/badge/Question-blue) **What unusual file (for an American company) does winsys32.dll cause to be downloaded into the Frothly environment?**
+---
 
-Searching for the `winsys32.dll` related logs 
-```bash
+> **Question:** What unusual file (for an American company) does winsys32.dll cause to be downloaded into the Frothly environment?
+{: .prompt-info }
+
+Searching for the `winsys32.dll` related logs:
+~~~splunk
 index="botsv2" winsys32.dll
-```
-<img width="1910" height="605" alt="image" src="https://github.com/user-attachments/assets/9bd01326-d481-40de-bcff-0203227349db" />
+~~~
+{: .nolineno }
 
-It  is clear that the file is used through the ftp process, so filtering out the traffic of ftp and using most comman commands of ftp to download the files 
-```bash
+![Winsys32 search](https://github.com/user-attachments/assets/9bd01326-d481-40de-bcff-0203227349db){: .shadow .rounded }
+_Figure 48: Tracking activity linked to winsys32.dll._
+
+It is clear that the file is used through the FTP process, so filtering out the traffic of FTP and using most common commands of FTP to download the files:
+~~~splunk
 index="botsv2" sourcetype="stream:ftp" (*get* OR *retr*)
-```
-<img width="1889" height="648" alt="image" src="https://github.com/user-attachments/assets/6bcd2346-9a5c-4771-be91-a46aea08237b" />
+~~~
+{: .nolineno }
 
-!warning: copying the file name directly may cause escape unicode deformation so using cyberchef to solve this problem and allowing to copy the file name wihout any changes as following
-<img width="1900" height="641" alt="image" src="https://github.com/user-attachments/assets/4cee8bb5-4764-4d8a-907e-2d2c91524fa8" />
+![FTP commands](https://github.com/user-attachments/assets/6bcd2346-9a5c-4771-be91-a46aea08237b){: .shadow .rounded }
+_Figure 49: Filtering for FTP download commands._
 
+!warning: Copying the file name directly may cause escape Unicode deformation, so using CyberChef to solve this problem and allowing to copy the file name without any changes as following:
 
-> ![](https://img.shields.io/badge/Answer-success) 나_는_ᄃ_ᅦ이ᄇ.ᅵᄃ
+![CyberChef Unicode](https://github.com/user-attachments/assets/4cee8bb5-4764-4d8a-907e-2d2c91524fa8){: .shadow .rounded }
+_Figure 50: Handling Unicode string encoding via CyberChef._
 
-> ![](https://img.shields.io/badge/Question-blue) **What is the first and last name of the poor innocent sap who was implicated in the metadata of the file that executed PowerShell Empire on the first victim's workstation? Answer example: John Smith**
+> **Answer:** `나_는_ᄃ_ᅦ이ᄇ.ᅵᄃ`
+{: .prompt-tip }
+<br>
 
-The hash of the file is not at the logs at all, all found was the hash of winword itself which was 
-SHA1=8F68C842B2F38A1E638267CA6AAF663A8AF5D6A7 and it was safe in VirusTotal 
-So the only way to know it is to download the file in a sandbox and hash it, fortunatly there are links in the task provided that made that move
+---
 
-browsing the link:
+> **Question:** What is the first and last name of the poor innocent sap who was implicated in the metadata of the file that executed PowerShell Empire on the first victim's workstation? Answer example: John Smith
+{: .prompt-info }
+
+The hash of the file is not in the logs at all, all found was the hash of WinWord itself which was `SHA1=8F68C842B2F38A1E638267CA6AAF663A8AF5D6A7` and it was safe in VirusTotal. So the only way to know it is to download the file in a sandbox and hash it, fortunately, there are links in the task provided that made that move.
+
+Browsing the link:
 https://www.virustotal.com/gui/file/d8834aaa5ad6d8ee5ae71e042aca5cab960e73a6827e45339620359633608cf1/detection
 
-<img width="1344" height="649" alt="image" src="https://github.com/user-attachments/assets/16789796-c550-4ee0-8a8e-9316523a97d3" />
+![VirusTotal Author](https://github.com/user-attachments/assets/16789796-c550-4ee0-8a8e-9316523a97d3){: .shadow .rounded }
+_Figure 51: Finding the document author in VirusTotal metadata._
 
+> **Answer:** `Ryan Kovar`
+{: .prompt-tip }
+<br>
 
-> ![](https://img.shields.io/badge/Answer-success) Ryan Kovar
+---
 
-> ![](https://img.shields.io/badge/Question-blue) **Within the document, what kind of points is mentioned if you found the text?**
+> **Question:** Within the document, what kind of points is mentioned if you found the text?
+{: .prompt-info }
 
-So the only way to know it is to download the file in a sandbox and open it, fortunatly there are links in the task provided that made that move
+So the only way to know it is to download the file in a sandbox and open it, fortunately, there are links in the task provided that made that move.
 
-browsing the link:
+Browsing the link:
 https://app.any.run/tasks/15d17cd6-0eb6-4f52-968d-0f897fd6c3b3
-<img width="1361" height="655" alt="image" src="https://github.com/user-attachments/assets/db082cd6-cbef-4d99-ba5c-7021601c26f5" />
 
+![ANY.RUN Sandbox](https://github.com/user-attachments/assets/db082cd6-cbef-4d99-ba5c-7021601c26f5){: .shadow .rounded }
+_Figure 52: Viewing the malicious document inside ANY.RUN._
 
-> ![](https://img.shields.io/badge/Answer-success) CyberEastEgg
+> **Answer:** `CyberEastEgg`
+{: .prompt-tip }
+<br>
 
-> ![](https://img.shields.io/badge/Question-blue) **Within the document, what kind of points is mentioned if you found the text?**
+---
 
-So the only way to know it is to download the file in a sandbox and open it, fortunatly there are links in the task provided that made that move
+> **Question:** What is the name of the PHP file executed by the malicious scheduled task?
+{: .prompt-info }
 
-browsing the link:
-https://app.any.run/tasks/15d17cd6-0eb6-4f52-968d-0f897fd6c3b3
-<img width="1361" height="655" alt="image" src="https://github.com/user-attachments/assets/db082cd6-cbef-4d99-ba5c-7021601c26f5" />
-
-searching for created scheduled tasks
-```bash
+Searching for created scheduled tasks:
+~~~splunk
 index="botsv2" schtasks create
-```
-<img width="1910" height="510" alt="image" src="https://github.com/user-attachments/assets/0e03a1cc-e67e-47a2-a4c8-177c5c282b17" />
+~~~
+{: .nolineno }
 
-Browsing the interesting fields, the `Process_CommandLine` has some encoded commands
-<img width="1900" height="540" alt="image" src="https://github.com/user-attachments/assets/0cf0d277-b376-4cac-89bb-2c79e0542e16" />
+![Schtasks creation](https://github.com/user-attachments/assets/0e03a1cc-e67e-47a2-a4c8-177c5c282b17){: .shadow .rounded }
+_Figure 53: Searching for scheduled task creation events._
 
-clicking on the command to filter it out 
-<img width="1870" height="352" alt="image" src="https://github.com/user-attachments/assets/7a1d6daa-2922-460f-a159-de9463d6fe11" />
+Browsing the interesting fields, the `Process_CommandLine` has some encoded commands.
 
-its obvious that the command line make the scheduled task in this path `HKLM:\Software\Microsoft\Network`
-the HKLM suggests that there are changes happened in the registery key as HKLM is abbreviations for 
-`HKEY_LOCAL_MACHINE`
-so filtering it out in the spl query 
-```bash
+![Encoded commandline](https://github.com/user-attachments/assets/0cf0d277-b376-4cac-89bb-2c79e0542e16){: .shadow .rounded }
+_Figure 54: Identifying obfuscated arguments._
+
+Clicking on the command to filter it out:
+
+![Filter commandline](https://github.com/user-attachments/assets/7a1d6daa-2922-460f-a159-de9463d6fe11){: .shadow .rounded }
+_Figure 55: Isolating the specific malicious command line._
+
+It is obvious that the command line makes the scheduled task in this path `HKLM:\Software\Microsoft\Network`. The HKLM suggests that there are changes that happened in the registry key as HKLM is an abbreviation for `HKEY_LOCAL_MACHINE`. So filtering it out in the SPL query:
+~~~splunk
 index="botsv2" HKLM\\Software\\Microsoft\\Network
-```
-<img width="1894" height="620" alt="image" src="https://github.com/user-attachments/assets/237d0fbb-7b36-4d7f-9f6a-d5314a8edd17" />
+~~~
+{: .nolineno }
 
-There are 4 events each has a base64 encoded text, take each one of the four and convert it to readable text in cyberchef
-Use the Frombase64 along with text decode utf-16 (1200) as it was decoded with Unicode 
+![HKLM registry search](https://github.com/user-attachments/assets/237d0fbb-7b36-4d7f-9f6a-d5314a8edd17){: .shadow .rounded }
+_Figure 56: Searching for associated registry modifications._
 
-<img width="1910" height="643" alt="image" src="https://github.com/user-attachments/assets/9a78ad00-ccc1-4836-a2df-afddfea4c807" />
+There are 4 events, each has a Base64 encoded text. Take each one of the four and convert it to readable text in CyberChef. Use the FromBase64 along with text decode UTF-16 (1200) as it was decoded with Unicode.
 
+![CyberChef decode task](https://github.com/user-attachments/assets/9a78ad00-ccc1-4836-a2df-afddfea4c807){: .shadow .rounded }
+_Figure 57: Decoding the payload to reveal the PHP file._
 
-> ![](https://img.shields.io/badge/Answer-success) process.php
+> **Answer:** `process.php`
+{: .prompt-tip }
+<br>
 
+<style>
+  /* 1. Fix the "Outside" (Home Page Card) - prevents cropping */
+  .post-preview .preview-img img {
+    object-fit: contain !important;
+    background-color: #1b1b1e; /* Matches Chirpy's dark background */
+  }
 
+  /* 2. Fix the "Inside" - hides the banner completely */
+  #post-wrapper > img:first-of-type,
+  #post-wrapper img.preview-img,
+  header + .preview-img,
+  header + img,
+  .post-content > img:first-child {
+    display: none !important;
+  }
+</style>
