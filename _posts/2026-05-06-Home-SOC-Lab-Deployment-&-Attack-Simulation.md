@@ -1,7 +1,7 @@
 ---
 layout: post
 title: "Building a Home SOC Lab: ELK Stack & SSH Brute Force Detection"
-date: 2026-05-06 12:00:00 +0200
+date: 2026-05-06 00:00:00 +0200
 categories: ["Home Lab", "SIEM Setup"]
 tags: [elastic, kibana, soc-lab, threat-hunting, blue-team, hydra]
 pin: true
