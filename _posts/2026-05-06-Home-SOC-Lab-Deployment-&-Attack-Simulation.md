@@ -354,6 +354,12 @@ Building these custom detection rules, writing the logic to minimize false posit
     visibility: hidden !important;
     height: 0 !important;
     margin: 0 !important;
+    .post-preview .preview-img img {
+  object-fit: contain !important;
+  background-color: #1b1b1e !important; /* Matches the dark mode card background so it blends perfectly */
+}
   }
 </style>
-````</HOST_IP_ADDRESS>
+
+/* Make all home page thumbnails fit without cropping */
+
