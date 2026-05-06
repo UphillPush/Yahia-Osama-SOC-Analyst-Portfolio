@@ -12,19 +12,150 @@ redirect_from:
 # Snapped-Phish-ing-Line
 <img width="1903"  alt="header" src="https://github.com/user-attachments/assets/3cd4145c-8211-42ce-88f9-a5e57fbf2d84" />
 
-## An Ordinary Midsummer Day...
+## Set up the virtual machines 
 
-#### As an IT department personnel of SwiftSpend Financial, one of your responsibilities is to support your fellow employees with their technical concerns. While everything seemed ordinary and mundane, this gradually changed when several employees from various departments started reporting an unusual email they had received. Unfortunately, some had already submitted their credentials and could no longer log in.
+#### For this Lab, two Virtual machines was used where one is ubuntu server where the logs are gathered and the other is a windows virtual machine where advanced analysis and search is done on the logs 
 
-### You now proceeded to investigate what is going on by:
+Setting up the Windows machine
+Give the machine a name and select the `.iso` file of the OS to be installed 
+<img width="752" height="696" alt="image" src="https://github.com/user-attachments/assets/00006630-69bb-456b-88b4-886249488530" />
 
-1. Analysing the email samples provided by your colleagues.
-1. Analysing the phishing URL(s) by browsing it using Firefox.
-1. Retrieving the phishing kit used by the adversary.
-1. Using CTI-related tooling to gather more information about the adversary.
-1. Analysing the phishing kit to gather more information about the adversary.
+The username and password for the machine are set as well 
+<img width="752" height="703" alt="image" src="https://github.com/user-attachments/assets/06384b5d-f348-49a7-af23-9a9a2bd6bbf6" />
 
-Note: The phishing emails to be analysed are under the phish-emails directory on the Desktop. Usage of a web browser, text editor and some knowledge of the grep command will help.
+For the hardware, 4Gb and 3 cores are enough to run the programs used in the lab 
+<img width="755" height="699" alt="image" src="https://github.com/user-attachments/assets/62a89474-9702-4c80-9cd0-2a47f44631f7" />
+
+For the Hard disk, 50GB or less is enough 
+<img width="751" height="697" alt="image" src="https://github.com/user-attachments/assets/c60dcf3e-7e21-4f82-b259-e7f947a75cce" />
+
+Then finish was clicked to start the virtual machine 
+<img width="737" height="649" alt="image" src="https://github.com/user-attachments/assets/6228e593-3a96-4464-929d-54aac0623e21" />
+
+Its important to make sure that Network settings is set to bridged Adapter and Name is Realtek PCIe if the host machine is connected through a LAN and Wireless if connected through the WiFi 
+<img width="658" height="532" alt="image" src="https://github.com/user-attachments/assets/eb7e2125-483f-45ad-a5f8-c94da15ef197" />
+
+After the machine boots up, the elastic search link is browsed to download it through 
+`https://www.elastic.co/downloads/past-releases/elasticsearch-8-13-0`
+<img width="724" height="572" alt="image" src="https://github.com/user-attachments/assets/37611df6-231e-4d4c-b4fb-362823e7e8e3" />
+
+After the download, the .zip folder is extracted in C
+Before running, the configuration file `config\elasticsearch.yml` has these commands to be added to it 
+```yml
+network.host: 0.0.0.0
+discovery.type: single-node
+```
+<img width="693" height="527" alt="image" src="https://github.com/user-attachments/assets/b475570d-4bb5-4a2f-a32e-8d264207547a" />
+
+Where, network.host: 0.0.0.0 allows Elasticsearch to accept connections from other machines on the network, not just localhost.
+      xpack.security.enabled: false disables authentication for the home lab environment to simplify the setup.
+
+After saving the file and closing it, the `elasticseach.bat` file is run in the cmd with the followig commands 
+```bash
+cd C:\elasticsearch-8.13.0\bin
+elasticsearch.bat
+```
+<img width="725" height="499" alt="image" src="https://github.com/user-attachments/assets/422f17d4-4cff-49a9-984e-866895244cc4" />
+
+Browsing `127.0.0.1:9200` will direct to the elastic search and ask for a login
+When elastic starts it sets a username and password in the cmd, to reset it open another cmd and type 
+```bash
+cd C:\elasticsearch-8.13.0\bin
+elasticsearch-reset-password -u elastic
+```
+<img width="705" height="180" alt="image" src="https://github.com/user-attachments/assets/72d57742-a798-4dfa-85e9-a1e7eff61d83" />
+
+This prints a new password that could be copied and used to login 
+<img width="731" height="533" alt="image" src="https://github.com/user-attachments/assets/98ed9c77-eb19-407e-9c88-e24da17e1d59" />
+<img width="733" height="570" alt="image" src="https://github.com/user-attachments/assets/bdfa1082-8ab4-4c02-b425-a38e63bda6d4" />
+
+Now after configuring the elastic seach, the Kibana dashboard needs to be set up too to visualize the logs and provide an interactive gui for analysis 
+
+Downloading kibana from the link below and extracting it in C as well 
+`https://www.elastic.co/downloads/past-releases/kibana-8-13-0`
+<img width="724" height="570" alt="image" src="https://github.com/user-attachments/assets/838f731b-130a-4435-898b-c0f54e5cf47e" />
+
+Kibana also has a password that need to be got from ealstic search through the following cmd:
+```bash
+cd C:\elasticsearch-8.13.0\bin
+elasticsearch-reset-password -u kibana_system
+```
+
+<img width="689" height="144" alt="image" src="https://github.com/user-attachments/assets/c8af2bcc-f94c-4d7f-bc6d-503748bf4c97" />
+
+The password is copied to be used later in the configuration file
+
+For the kibana configuration file `kibana.yml` locatedin the config folder, there also some changes need to be made 
+Adding these lines in kibana.yml 
+```yml
+elasticsearch.hosts: ["http://127.0.0.1:9200"]
+elasticsearch.username: "kibana_system"
+elasticsearch.password: "<password coppied from the cmd>"
+elasticsearch.ssl.verificationMode: none
+```
+<img width="687" height="530" alt="image" src="https://github.com/user-attachments/assets/c5bbe22e-950d-4e57-9939-576fbc2e4ad6" />
+
+Then the file is saved and kibana is started through the cmd: 
+```bash
+cd C:\kibana-8.13.0\bin
+kibana.bat
+```
+<img width="714" height="573" alt="image" src="https://github.com/user-attachments/assets/4a25817e-03bc-4f00-9a71-139b3e45d7e5" />
+
+<img width="721" height="572" alt="image" src="https://github.com/user-attachments/assets/2082d3c6-ec8c-41cf-93fb-ee4129310ca9" />
+
+When the `kibana is now available` is seen in the cmd, browsing the link `127.0.0.1:5601` would give access to the kibana dashboard 
+Signing in with the elastic credentials, the dashboard was accessed 
+<img width="729" height="576" alt="image" src="https://github.com/user-attachments/assets/791ecb20-82b4-4a83-860b-3f4992b4b923" />
+
+<img width="732" height="581" alt="image" src="https://github.com/user-attachments/assets/8e2c9576-b09d-4edc-b732-9f89ae5ad31b" />
+
+After successfully setting up elastic search and kibana, its finally time to set up the agents that will be monitored 
+
+### Setting up the Agent 
+for this lab an ubuntu server virtual machine was chosen to be the agent 
+A new VM was created with 2Gb and 2 cores along with the ubuntu server .iso image 
+<img width="752" height="697" alt="image" src="https://github.com/user-attachments/assets/942fb6aa-2c38-4617-91b6-b53404081a43" />
+<img width="757" height="700" alt="image" src="https://github.com/user-attachments/assets/495c0c5d-01cf-4654-bd39-525810596feb" />
+
+The two virtual machines have to be in the same network, so the same network configuration is applied 
+<img width="661" height="540" alt="image" src="https://github.com/user-attachments/assets/a771c4ba-da03-42b6-b7d5-440c092c83eb" />
+
+The elastic agent could be sownloaded on the ubuntu server using the command:
+```bash
+curl -L -O https://artifacts.elastic.co/downloads/beats/elastic-agent/elastic-agent-8.13.0-linux-x86_64.tar.gz
+``` 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 ## Answer the questions below
 >![](https://img.shields.io/badge/Question-blue) Who is the individual who received an email attachment containing a PDF?
