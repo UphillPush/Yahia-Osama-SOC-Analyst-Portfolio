@@ -18,6 +18,22 @@ image:
 ![Lab Architecture Header](https://github.com/user-attachments/assets/3cd4145c-8211-42ce-88f9-a5e57fbf2d84){: .shadow .rounded }
 _Figure 1: SOC Home Lab Overview._
 
+## Introduction & Architecture Overview
+
+Before diving into the technical deployment, it is important to understand exactly what is being built in this lab and how the components interact. 
+
+The goal of this project is to build a functional Security Operations Center (SOC) environment from scratch. We will deploy a target machine, instrument it to collect security telemetry, forward those logs to a central SIEM, and finally simulate a realistic cyber attack (SSH brute-forcing) to see how an analyst hunts for the activity.
+
+To achieve this, we are using the industry-standard **ELK Stack**, specifically broken down into these three core components:
+
+*   **Elasticsearch (The Brain):** A highly scalable search and analytics engine. It acts as the central database where all our security logs are securely stored, indexed, and made instantly searchable.
+*   **Kibana (The Eyes):** The visualization and management layer. Kibana sits on top of Elasticsearch and provides the interactive web interface (GUI) where SOC analysts actually spend their time hunting for threats, building dashboards, and running KQL (Kibana Query Language) searches.
+*   **Elastic Agent (The Eyes & Ears):** A single, unified endpoint agent installed directly on our target machine. Instead of installing multiple different log shippers, the Elastic Agent monitors the system, collects specific files (like `/var/log/auth.log`), and securely forwards them over the network into Elasticsearch.
+
+**The Workflow:** The attacker strikes the Ubuntu server ➔ The Elastic Agent detects the failed logins and sends the logs to Elasticsearch ➔ Elasticsearch indexes the data ➔ The SOC Analyst uncovers the attack in Kibana.
+
+---
+
 ## Phase 1: Setting up the Virtual Machines 
 
 For this lab, two virtual machines were deployed: an Ubuntu Server acting as the endpoint generating logs, and a Windows machine hosting the ELK stack for advanced log analysis and threat detection.
@@ -199,6 +215,7 @@ curl -L -O [https://artifacts.elastic.co/downloads/beats/elastic-agent/elastic-a
 {: .nolineno }
 
 Extract the downloaded archive:
+
 ```bash
 tar xzvf elastic-agent-8.13.0-linux-x86_64.tar.gz
 ```
@@ -269,7 +286,6 @@ sudo apt install hydra -y
 {: .nolineno }
 
 A fake password list is created to act as a reference dictionary for Hydra:
-
 ```bash
 cat > passwords.txt << 'EOF'
 wrong1
@@ -307,6 +323,18 @@ message: "Failed password"
 
 ![Detecting the Attack](https://github.com/user-attachments/assets/4b9acdfd-3c24-4ba4-b892-6a99c29328b9){: .shadow .rounded }
 _Figure 30: Hunting the brute force attack via KQL inside Kibana._
+
+---
+
+## Phase 6: Next Steps & Alerting Recommendations
+
+We have successfully built a centralized logging pipeline and manually hunted down an attack using KQL. However, relying on an analyst to manually search for `"Failed password"` all day is not a sustainable defense strategy. 
+
+In a real-world enterprise environment, a modern Security Operations Center relies on **automated detection engineering**. The next logical phase for this lab is to move from *manual hunting* to *proactive alerting*.
+
+To properly secure this environment, we should configure Elastic Security to actively monitor for this specific behavior. For example, we could create a threshold rule that triggers a high-severity alert if **more than 5 failed SSH login attempts occur from a single source IP within a 1-minute window**. 
+
+Building these custom detection rules, writing the logic to minimize false positives, and configuring the SIEM to automatically push notifications to an analyst (via email or a webhook) will be the primary focus of my **future projects and upcoming write-ups!**
 
 <style>
   /* 1. Fix the "Outside" (Home Page Cards) - prevents cropping */
