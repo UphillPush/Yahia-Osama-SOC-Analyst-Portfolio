@@ -1,385 +1,329 @@
 ---
-layout: default
-title: "TryHackMe: Snapped Phish-ing Line Walkthrough"
-description: "Detailed solution and walkthrough for the Snapped Phish-ing Line challenge on TryHackMe."
-
-redirect_from: 
-  - /TryHackMe/Challenges/Snapped-Phish-ing-Line.html
-  - /TryHackMe/Challenges/Snapped-Phish-ing-Line
+layout: post
+title: "Building a Home SOC Lab: ELK Stack & SSH Brute Force Detection"
+date: 2026-05-06 12:00:00 +0200
+categories: ["Home Lab", "SIEM Setup"]
+tags: [elastic, kibana, soc-lab, threat-hunting, blue-team, hydra]
+pin: true
+image:
+  path: https://github.com/user-attachments/assets/3cd4145c-8211-42ce-88f9-a5e57fbf2d84
+  # This hides it from the internal post header in almost all Chirpy versions
+  preview: false
+  # If the thumbnail is cropped, try adding this class
+  class: img-contain
 ---
 
+# Home SOC Lab Deployment & Attack Simulation
 
-# Snapped-Phish-ing-Line
-<img width="1903"  alt="header" src="https://github.com/user-attachments/assets/3cd4145c-8211-42ce-88f9-a5e57fbf2d84" />
+![Lab Architecture Header](https://github.com/user-attachments/assets/3cd4145c-8211-42ce-88f9-a5e57fbf2d84){: .shadow .rounded }
+_Figure 1: SOC Home Lab Overview._
 
-## Set up the virtual machines 
+## Phase 1: Setting up the Virtual Machines 
 
-#### For this Lab, two Virtual machines was used where one is ubuntu server where the logs are gathered and the other is a windows virtual machine where advanced analysis and search is done on the logs 
+For this lab, two virtual machines were deployed: an Ubuntu Server acting as the endpoint generating logs, and a Windows machine hosting the ELK stack for advanced log analysis and threat detection.
 
-Setting up the Windows machine
-Give the machine a name and select the `.iso` file of the OS to be installed 
-<img width="752" height="696" alt="image" src="https://github.com/user-attachments/assets/00006630-69bb-456b-88b4-886249488530" />
+### Windows Host Setup (SIEM Server)
+First, a new virtual machine is created. Give the machine a name and select the `.iso` file of the OS to be installed.
 
-The username and password for the machine are set as well 
-<img width="752" height="703" alt="image" src="https://github.com/user-attachments/assets/06384b5d-f348-49a7-af23-9a9a2bd6bbf6" />
+![Windows VM Setup](https://github.com/user-attachments/assets/00006630-69bb-456b-88b4-886249488530){: .shadow .rounded }
+_Figure 2: Selecting the Windows ISO._
 
-For the hardware, 4Gb and 3 cores are enough to run the programs used in the lab 
-<img width="755" height="699" alt="image" src="https://github.com/user-attachments/assets/62a89474-9702-4c80-9cd0-2a47f44631f7" />
+The username and password for the machine are set as well.
 
-For the Hard disk, 50GB or less is enough 
-<img width="751" height="697" alt="image" src="https://github.com/user-attachments/assets/c60dcf3e-7e21-4f82-b259-e7f947a75cce" />
+![Windows Credentials](https://github.com/user-attachments/assets/06384b5d-f348-49a7-af23-9a9a2bd6bbf6){: .shadow .rounded }
+_Figure 3: Setting the primary user account._
 
-Then finish was clicked to start the virtual machine 
-<img width="737" height="649" alt="image" src="https://github.com/user-attachments/assets/6228e593-3a96-4464-929d-54aac0623e21" />
+For the hardware, 4GB of RAM and 3 CPU cores are sufficient to run the SIEM stack smoothly in this lab environment.
 
-Its important to make sure that Network settings is set to bridged Adapter and Name is Realtek PCIe if the host machine is connected through a LAN and Wireless if connected through the WiFi 
-<img width="658" height="532" alt="image" src="https://github.com/user-attachments/assets/eb7e2125-483f-45ad-a5f8-c94da15ef197" />
+![Hardware Setup](https://github.com/user-attachments/assets/62a89474-9702-4c80-9cd0-2a47f44631f7){: .shadow .rounded }
+_Figure 4: Allocating Memory and Processors._
 
-After the machine boots up, the elastic search link is browsed to download it through 
+For the hard disk, 50GB or less is enough space.
+
+![Disk Setup](https://github.com/user-attachments/assets/c60dcf3e-7e21-4f82-b259-e7f947a75cce){: .shadow .rounded }
+_Figure 5: Allocating virtual disk size._
+
+Then, click "Finish" to start the virtual machine installation.
+
+![Finish VM Setup](https://github.com/user-attachments/assets/6228e593-3a96-4464-929d-54aac0623e21){: .shadow .rounded }
+_Figure 6: Completing the initial VM configuration._
+
+> **Networking Tip:** It is important to make sure that the Network settings are set to **Bridged Adapter**. The Name should be set to your physical adapter (e.g., Realtek PCIe if the host machine is connected through a LAN, or Wireless if connected through Wi-Fi).
+{: .prompt-info }
+
+![Bridged Adapter](https://github.com/user-attachments/assets/eb7e2125-483f-45ad-a5f8-c94da15ef197){: .shadow .rounded }
+_Figure 7: Configuring the Bridged Network Adapter._
+
+---
+
+## Phase 2: Installing & Configuring Elasticsearch
+
+After the Windows machine boots up, browse to the official Elastic website to download the platform:
 `https://www.elastic.co/downloads/past-releases/elasticsearch-8-13-0`
-<img width="724" height="572" alt="image" src="https://github.com/user-attachments/assets/37611df6-231e-4d4c-b4fb-362823e7e8e3" />
 
-After the download, the .zip folder is extracted in C
-Before running, the configuration file `config\elasticsearch.yml` has these commands to be added to it 
-```yml
+![Elasticsearch Download](https://github.com/user-attachments/assets/37611df6-231e-4d4c-b4fb-362823e7e8e3){: .shadow .rounded }
+_Figure 8: Downloading Elasticsearch 8.13.0._
+
+After the download finishes, extract the `.zip` folder into the `C:\` drive. Before running the service, the configuration file located at `config\elasticsearch.yml` needs to be edited. Add these lines to the file:
+```yaml
 network.host: 0.0.0.0
 discovery.type: single-node
 ```
-<img width="693" height="527" alt="image" src="https://github.com/user-attachments/assets/b475570d-4bb5-4a2f-a32e-8d264207547a" />
+{: .nolineno }
 
-Where, network.host: 0.0.0.0 allows Elasticsearch to accept connections from other machines on the network, not just localhost.
-      xpack.security.enabled: false disables authentication for the home lab environment to simplify the setup.
+![Elastic YAML Config](https://github.com/user-attachments/assets/b475570d-4bb5-4a2f-a32e-8d264207547a){: .shadow .rounded }
+_Figure 9: Updating the elasticsearch.yml file._
 
-After saving the file and closing it, the `elasticseach.bat` file is run in the cmd with the followig commands 
-```bash
+*   `network.host: 0.0.0.0` allows Elasticsearch to accept connections from other machines on the network, not just localhost.
+*   Note: For a simple home lab environment, setting `xpack.security.enabled: false` can disable authentication to simplify setup, though here we will proceed with basic security enabled.
+
+After saving and closing the file, open a Command Prompt and execute the `elasticsearch.bat` file:
+```cmd
 cd C:\elasticsearch-8.13.0\bin
 elasticsearch.bat
 ```
-<img width="725" height="499" alt="image" src="https://github.com/user-attachments/assets/422f17d4-4cff-49a9-984e-866895244cc4" />
+{: .nolineno }
 
-Browsing `127.0.0.1:9200` will direct to the elastic search and ask for a login
-When elastic starts it sets a username and password in the cmd, to reset it open another cmd and type 
-```bash
+![Starting Elasticsearch](https://github.com/user-attachments/assets/422f17d4-4cff-49a9-984e-866895244cc4){: .shadow .rounded }
+_Figure 10: Running the Elasticsearch batch file._
+
+Browsing to `127.0.0.1:9200` will direct you to Elasticsearch and ask for a login. When Elastic starts for the first time, it generates a default password. To reset it manually, open a new Command Prompt and type:
+```cmd
 cd C:\elasticsearch-8.13.0\bin
 elasticsearch-reset-password -u elastic
 ```
-<img width="705" height="180" alt="image" src="https://github.com/user-attachments/assets/72d57742-a798-4dfa-85e9-a1e7eff61d83" />
+{: .nolineno }
 
-This prints a new password that could be copied and used to login 
-<img width="731" height="533" alt="image" src="https://github.com/user-attachments/assets/98ed9c77-eb19-407e-9c88-e24da17e1d59" />
-<img width="733" height="570" alt="image" src="https://github.com/user-attachments/assets/bdfa1082-8ab4-4c02-b425-a38e63bda6d4" />
+![Resetting Elastic Password](https://github.com/user-attachments/assets/72d57742-a798-4dfa-85e9-a1e7eff61d83){: .shadow .rounded }
+_Figure 11: Generating a new password for the 'elastic' user._
 
-Now after configuring the elastic seach, the Kibana dashboard needs to be set up too to visualize the logs and provide an interactive gui for analysis 
+This prints a new password that can be copied and used to log in.
 
-Downloading kibana from the link below and extracting it in C as well 
+![Elastic Login Screen](https://github.com/user-attachments/assets/98ed9c77-eb19-407e-9c88-e24da17e1d59){: .shadow .rounded }
+_Figure 12: Logging into Elasticsearch._
+
+![Elastic Success JSON](https://github.com/user-attachments/assets/bdfa1082-8ab4-4c02-b425-a38e63bda6d4){: .shadow .rounded }
+_Figure 13: Successful connection to the Elastic cluster._
+
+---
+
+## Phase 3: Installing & Configuring Kibana
+
+After configuring Elasticsearch, the Kibana dashboard needs to be set up to visualize the logs and provide an interactive GUI for analysis.
+
+Download Kibana from the link below and extract it to the `C:\` drive as well:
 `https://www.elastic.co/downloads/past-releases/kibana-8-13-0`
-<img width="724" height="570" alt="image" src="https://github.com/user-attachments/assets/838f731b-130a-4435-898b-c0f54e5cf47e" />
 
-Kibana also has a password that need to be got from ealstic search through the following cmd:
-```bash
+![Kibana Download](https://github.com/user-attachments/assets/838f731b-130a-4435-898b-c0f54e5cf47e){: .shadow .rounded }
+_Figure 14: Downloading Kibana 8.13.0._
+
+Kibana requires a system password to connect to Elasticsearch. You can generate this using the elasticsearch terminal:
+```cmd
 cd C:\elasticsearch-8.13.0\bin
 elasticsearch-reset-password -u kibana_system
 ```
+{: .nolineno }
 
-<img width="689" height="144" alt="image" src="https://github.com/user-attachments/assets/c8af2bcc-f94c-4d7f-bc6d-503748bf4c97" />
+![Resetting Kibana Password](https://github.com/user-attachments/assets/c8af2bcc-f94c-4d7f-bc6d-503748bf4c97){: .shadow .rounded }
+_Figure 15: Generating the kibana_system user password._
 
-The password is copied to be used later in the configuration file
-
-For the kibana configuration file `kibana.yml` locatedin the config folder, there also some changes need to be made 
-Adding these lines in kibana.yml 
-```yml
-elasticsearch.hosts: ["http://127.0.0.1:9200"]
+Copy this password to use in the configuration file. Open the Kibana configuration file (`kibana.yml` located in the `config` folder) and add the following lines:
+```yaml
+elasticsearch.hosts: ["[http://127.0.0.1:9200](http://127.0.0.1:9200)"]
 elasticsearch.username: "kibana_system"
-elasticsearch.password: "<password coppied from the cmd>"
+elasticsearch.password: "<password_copied_from_cmd>"
 elasticsearch.ssl.verificationMode: none
 ```
-<img width="687" height="530" alt="image" src="https://github.com/user-attachments/assets/c5bbe22e-950d-4e57-9939-576fbc2e4ad6" />
+{: .nolineno }
 
-Then the file is saved and kibana is started through the cmd: 
-```bash
+![Kibana YAML Config](https://github.com/user-attachments/assets/c5bbe22e-950d-4e57-9939-576fbc2e4ad6){: .shadow .rounded }
+_Figure 16: Updating the kibana.yml file._
+
+Save the file and start Kibana through the Command Prompt:
+```cmd
 cd C:\kibana-8.13.0\bin
 kibana.bat
 ```
-<img width="714" height="573" alt="image" src="https://github.com/user-attachments/assets/4a25817e-03bc-4f00-9a71-139b3e45d7e5" />
+{: .nolineno }
 
-<img width="721" height="572" alt="image" src="https://github.com/user-attachments/assets/2082d3c6-ec8c-41cf-93fb-ee4129310ca9" />
+![Starting Kibana](https://github.com/user-attachments/assets/4a25817e-03bc-4f00-9a71-139b3e45d7e5){: .shadow .rounded }
+_Figure 17: Running the Kibana batch file._
 
-When the `kibana is now available` is seen in the cmd, browsing the link `127.0.0.1:5601` would give access to the kibana dashboard 
-Signing in with the elastic credentials, the dashboard was accessed 
-<img width="729" height="576" alt="image" src="https://github.com/user-attachments/assets/791ecb20-82b4-4a83-860b-3f4992b4b923" />
+![Kibana Availability](https://github.com/user-attachments/assets/2082d3c6-ec8c-41cf-93fb-ee4129310ca9){: .shadow .rounded }
+_Figure 18: Kibana successfully starting._
 
-<img width="732" height="581" alt="image" src="https://github.com/user-attachments/assets/8e2c9576-b09d-4edc-b732-9f89ae5ad31b" />
+When the `"Kibana is now available"` message is seen in the CMD, browsing to `127.0.0.1:5601` will grant access to the Kibana dashboard. Sign in using the primary `elastic` credentials created earlier.
 
-After successfully setting up elastic search and kibana, its finally time to set up the agents that will be monitored 
+![Kibana Login](https://github.com/user-attachments/assets/791ecb20-82b4-4a83-860b-3f4992b4b923){: .shadow .rounded }
+_Figure 19: Logging into the Kibana web interface._
 
-### Setting up the Agent 
-for this lab an ubuntu server virtual machine was chosen to be the agent 
-A new VM was created with 2Gb and 2 cores along with the ubuntu server .iso image 
-<img width="752" height="697" alt="image" src="https://github.com/user-attachments/assets/942fb6aa-2c38-4617-91b6-b53404081a43" />
-<img width="757" height="700" alt="image" src="https://github.com/user-attachments/assets/495c0c5d-01cf-4654-bd39-525810596feb" />
+![Kibana Dashboard](https://github.com/user-attachments/assets/8e2c9576-b09d-4edc-b732-9f89ae5ad31b){: .shadow .rounded }
+_Figure 20: The primary Kibana Welcome Screen._
 
-The two virtual machines have to be in the same network, so the same network configuration is applied 
-<img width="661" height="540" alt="image" src="https://github.com/user-attachments/assets/a771c4ba-da03-42b6-b7d5-440c092c83eb" />
+---
 
-The elastic agent could be sownloaded on the ubuntu server using the command:
+## Phase 4: Setting Up the Agent (Ubuntu Server)
+
+After successfully setting up Elasticsearch and Kibana, it's finally time to set up the endpoint that will be monitored. For this lab, an Ubuntu Server virtual machine was chosen. 
+
+A new VM was created with 2GB RAM and 2 cores, utilizing the Ubuntu Server `.iso` image.
+
+![Ubuntu Setup 1](https://github.com/user-attachments/assets/942fb6aa-2c38-4617-91b6-b53404081a43){: .shadow .rounded }
+![Ubuntu Setup 2](https://github.com/user-attachments/assets/495c0c5d-01cf-4654-bd39-525810596feb){: .shadow .rounded }
+_Figure 21: Configuring the Ubuntu Server virtual machine._
+
+The two virtual machines must be on the same network, so the Bridged Adapter configuration is applied here as well.
+
+![Ubuntu Network Setup](https://github.com/user-attachments/assets/a771c4ba-da03-42b6-b7d5-440c092c83eb){: .shadow .rounded }
+_Figure 22: Ensuring Bridged Networking is active._
+
+The SSH protocol can be used to control the Ubuntu Server directly from the Windows host machine's command prompt. First, determine the IP of the server using:
 ```bash
-curl -L -O https://artifacts.elastic.co/downloads/beats/elastic-agent/elastic-agent-8.13.0-linux-x86_64.tar.gz
-``` 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-## Answer the questions below
->![](https://img.shields.io/badge/Question-blue) Who is the individual who received an email attachment containing a PDF?
-
-
-
-#### First, open the phish-emails dir on the desktop and right-click `open terminal here`, then we need to search for the file that contains the pdf attachment. This can be achieved through the command
-
-```bash 
-grep -l 'name=".*\pdf"' *.eml
+ip a
 ```
-This will return the name of the eml file that has a pdf attachment. We want to find out who received that pdf. The command is tunneled with `xargs` to view how this email was sent to in the command below
+{: .nolineno }
 
-```bash 
-grep -l 'name=".*\pdf"' *.eml | xargs -d '\n' "To:"
+![Checking IP Address](https://github.com/user-attachments/assets/fa1c6a7b-2008-41a8-bbf9-586c151ec0c6){: .shadow .rounded }
+_Figure 23: Retrieving the Ubuntu Server IP address._
+
+From the command output, it is known that the IP of the server is `192.168.1.3`. Use this IP to connect via SSH from the Windows CMD:
+```cmd
+ssh admn@192.168.1.3
 ```
+{: .nolineno }
 
-<img width="100%"  alt="code of answer1" src="https://github.com/user-attachments/assets/f9a4c4a7-1dde-4586-b319-f2bcbf498b41" />
-<br>
-<br>
-
->![](https://img.shields.io/badge/Answer-success) William McClean
-
-<br> 
-<br>
-<br> 
-<br>
-
-> ![](https://img.shields.io/badge/Question-blue) **What email address was used by the adversary to send the phishing emails?**
-#### The sender name of all files can be displayed with grep command too, as follows
+After typing the password, the server terminal is accessed. Now, the Elastic Agent can be downloaded onto the Ubuntu Server using the following command:
 ```bash
-grep -h -A 1 "^From:" *.eml"
+curl -L -O [https://artifacts.elastic.co/downloads/beats/elastic-agent/elastic-agent-8.13.0-linux-x86_64.tar.gz](https://artifacts.elastic.co/downloads/beats/elastic-agent/elastic-agent-8.13.0-linux-x86_64.tar.gz)
 ```
-Where `-h` is used to hide the file name   
-&emsp; &emsp;&emsp;`-A` for displaying the line after the search keyword and the lines after, depending on the number follows <br> 
-&emsp;&emsp;  &emsp;   `1` number of lines to display after the line match <br>   
+{: .nolineno }
 
-  <img width="624"  alt="Picture3" src="https://github.com/user-attachments/assets/707fd174-9ef8-4df1-b6fa-45b6344ba6f5" />
-  <br>
-  <br>
-  
->![](https://img.shields.io/badge/Answer-success) Accounts.Payable@groupmarketingonline.icu
-
-<br> 
-<br>
-<br> 
-<br>
-
-> ![](https://img.shields.io/badge/Question-blue) **What is the redirection URL to the phishing page for the individual Zoe Duncan? (defanged format)**
-#### For this question, we have to open the email sent to Zoe and download the attached html to inspect it 
-<img width="1795" alt="Screenshot 2026-01-18 175342" src="https://github.com/user-attachments/assets/e0be1594-7286-4eef-a214-3aff404add25" />
-<img width="1798" alt="Screenshot 2026-01-18 175412" src="https://github.com/user-attachments/assets/da8fb663-f7ff-4d8c-999f-8cebc27fa606" />
-
-<br><br>
-Now, the html file must be inspected for any url inside it, which can be done through the commnad 
+Extract the downloaded archive:
 ```bash
-grep "http[^ ]" *.html
+tar xzvf elastic-agent-8.13.0-linux-x86_64.tar.gz
 ```
-<img width="1132"  alt="Screenshot 2026-01-18 175932" src="https://github.com/user-attachments/assets/2fecd1a0-3253-4df7-b2e4-30704c38a282" />
-<br> 
-<br>
-So the URL is:   
+{: .nolineno }
 
-http://kennaroads.buzz/data/Update365/office365/40e7baa2f826a57fcf04e5202526f8bd/?email=zoe.duncan@swiftspend.finance&error    
+Change into the extracted directory:
 
-  
-This URL has to be defanged as required in the question, so Cyberchef was used to do it: 
-<br> 
-<br> 
-<img width="100%"  alt="Picture4" src="https://github.com/user-attachments/assets/83df2aca-2f4f-46bd-b081-dafb5ddfdbc3" />   
-<br> 
->![](https://img.shields.io/badge/Answer-success) hxxp[://]kennaroads[.]buzz/data/Update365/office365/40e7baa2f826a57fcf04e5202526f8bd/?email=zoe[.]duncan@swiftspend[.]finance&error
-<br>
-<br>
-<br>
-<br>
-
-> ![](https://img.shields.io/badge/Question-blue) **What is the URL to the .zip archive of the phishing kit? (defanged format)**
-#### The phishing URL sent to Zeo has a specific path to her, but if we remove the path related to the user, it will direct us to some files it's hosting 
-so for the link:   
-http://kennaroads.buzz/data/Update365/office365/40e7baa2f826a57fcf04e5202526f8bd/?email=zoe.duncan@swiftspend.finance&error  
-we will just keep the main path:   
-http://kennaroads.buzz/data/Update365/  
-<img width="624" height="312" alt="Picture5" src="https://github.com/user-attachments/assets/80a14ab3-5ad4-4aaf-8bd6-227cbfae57d0" />
-<br>
-<br>
-There is no `.zip` file here, so going back a bit to the link:  
-http://kennaroads.buzz/data    
-
-show us this page   
-
-   <img width="624" height="303" alt="Picture6" src="https://github.com/user-attachments/assets/e66c4b1f-14e2-4d7c-b9e4-7a3944e648c4" /> 
-   <br>
-   <br> 
-   Now, we can clearly see the `.zip` archive of the phishing kit, which is Update365.zip
-   so the link we are looking for is:   
-   http://kennaroads.buzz/data/Update365.zip    
-   
-   defang this URL using CyberChef:   
-<img width="1430" height="695" alt="Picture7" src="https://github.com/user-attachments/assets/3d22b28d-70d0-4290-9310-5a1de12ed48b" />
-<br>
-<br>
-
->![](https://img.shields.io/badge/Answer-success) hxxp[://]kennaroads[.]buzz/data/Update365[.]zip
-<br>
-<br>
-<br>
-<br>
-
-> ![](https://img.shields.io/badge/Question-blue) **What is the SHA256 hash of the phishing kit archive?**
-#### Download the Update365.zip in the phish-emails dir, then in the terminal write the command:   
 ```bash
-sha256sum Update365.zip
+cd elastic-agent-8.13.0-linux-x86_64
 ```
+{: .nolineno }
 
-<img width="624" height="232" alt="Picture8" src="https://github.com/user-attachments/assets/d5a3d8b7-99a4-46ef-9898-689ec866dec5" />
-<br> 
-<br>
-
-> ![](https://img.shields.io/badge/Answer-success) ba3c15267393419eb08c7b2652b8b6b39b406ef300ae8a18fee4d16b19ac9686
-     
-<br>
-<br>
-<br>
-<br>
-
-> ![](https://img.shields.io/badge/Question-blue) **When was the phishing kit archive first submitted? (format: YYYY-MM-DD HH:MM:SS UTC)**
-#### Using an open-source, popular tool for investigating viruses, VirusTotal is the best option.   
-In my browser, I visited virustotal page and inserted the archive sha256 hash to scan it, and easily saw the submission date  
-<img width="100%"  alt="image" src="https://github.com/user-attachments/assets/0dd5610f-7af5-4716-9f1a-aa2217ffffeb" />
-
-<br> 
-<br>
-
-> ![](https://img.shields.io/badge/Answer-success) 2020-04-08 21:55:50 UTC
-
-<br>
-<br>
-<br>
-<br>
-
-> ![](https://img.shields.io/badge/Question-blue) **What was the email address of the user who submitted their password twice?**
-#### The best way to track the login attempts is through logs, and in previous questions its know where are the hosting files  
-so back again to the link:   
-http://kennaroads.buzz/data    
-
-a `log.txt` file is seen, open it and try to look up for repeated email or password     
-
-<img width="975"  alt="image" src="https://github.com/user-attachments/assets/1c7fb47b-d887-417a-8015-05320392bb11" />  
-
-> ![](https://img.shields.io/badge/Answer-success) michael.ascot@swiftspend.finance
-<br>
-<br>
-<br>
-<br>
-
-> ![](https://img.shields.io/badge/Question-blue) **What was the email address used by the adversary to collect compromised credentials?**
-#### To know this we have to investigate more in the phishing kit archive, heading back to the host website at:   
-http://kennaroads.buzz/data/Update365.zip     
-
-   the Update365.zip is downloaded, then we move it to the phish-emails dir to investigate it using the command
-   ```bash
-  mv ~/Downloads/Update365.zip .
-```
-Then Unzip it using the command  
+Some configurations need to be optimized in the `elastic-agent.yml` file to ensure logs are routed to the SIEM:
 ```bash
-unzip Update365.zip
+cat > elastic-agent.yml << 'EOF'
+outputs:
+  default:
+    type: elasticsearch
+    hosts: ["http://<HOST_IP_ADDRESS>:9200"]
+    username: "elastic"
+    password: "YOUR_ELASTIC_PASSWORD"
+
+inputs:
+  - type: logfile
+    id: system-logs
+    streams:
+      - paths:
+          - /var/log/syslog
+          - /var/log/auth.log
+EOF
 ```
+{: .nolineno }
 
-<img width="1289"  alt="image" src="https://github.com/user-attachments/assets/35f93b98-3539-4862-b259-c185e12e83cd" />
+![Agent Config File](https://github.com/user-attachments/assets/e761e1b2-dae3-4687-b126-9f1ea18ae718){: .shadow .rounded }
+_Figure 24: Overwriting the elastic-agent.yml configuration._
 
-  The file that collects emails and send it have the word send in it for sure and is in the Update365 folder, so searching for files that contain the send keyword using the command  
-  ```bash
-grep -r "*send"
-```
-we found  
-
-<img width="1134" alt="image" src="https://github.com/user-attachments/assets/fa5c1788-f72f-4d80-985b-d78edfb768f2" />   
-
-  The submit.php is the file responsible for the submit button, to further investigate it we tunneled the command with cat
-<img width="975"  alt="image" src="https://github.com/user-attachments/assets/75cc76b2-1453-4bab-a78b-d8112be8b627" />
-<img width="975" alt="image" src="https://github.com/user-attachments/assets/dd1122d7-87e0-4335-a413-37ad673aaa00" />
-<br>
-
-
-Here, another suspicious email is found, and the responses are sent to whom is 
-> ![](https://img.shields.io/badge/Answer-success) m3npat@yandex.com
-<br>
-<br>
-<br>
-<br>
-
-> ![](https://img.shields.io/badge/Question-blue) **The adversary used other email addresses in the obtained phishing kit. What is the email address that ends in "@gmail.com"?**
-#### This one is easy, you just have to search for an email that ends with @gmail.com using the command:  
+Now, install the Elastic Agent through the terminal:
 ```bash
-grep -r "@gmail.com"
+sudo ./elastic-agent install
 ```
-<img width="1319"  alt="image" src="https://github.com/user-attachments/assets/88218dd2-ad78-4a3f-bb85-7f103140ebc8" />
-<br>
-<br>
+{: .nolineno }
 
-> ![](https://img.shields.io/badge/Answer-success) jamestanner2299@gmail.com
-<br>
-<br>
-<br>
-<br>
+![Installing Agent](https://github.com/user-attachments/assets/1b8cce87-eb9c-4d3b-86c6-8ec6d3d0818b){: .shadow .rounded }
+_Figure 25: Executing the agent installation script._
 
-> ![](https://img.shields.io/badge/Question-blue) **What is the hidden flag?**
+Check its status to ensure it is actively running and forwarding logs:
+```bash
+sudo systemctl status elastic-agent
+```
+{: .nolineno }
 
-Reading the instruction for this one :   
-<img width="651" alt="image" src="https://github.com/user-attachments/assets/6a401184-e86a-4eba-aa40-fbc8d4539d84" />  
+![Agent Status](https://github.com/user-attachments/assets/086c2d8c-dc3e-4989-80c7-a636d195e060){: .shadow .rounded }
+_Figure 26: Confirming the elastic-agent service is active._
 
-  Then the flag is a text file that is a subdomain or a directory of the phishing URL, since there is no enumeration tool in the VM like Gobuster, I guessed its called `flag.txt`   
-  so I tried this directory in the URL :   
-  <img width="975"  alt="image" src="https://github.com/user-attachments/assets/42596687-eee8-4ac9-a91e-5ada5691f5e9" />
-  <br> 
-  So the flag is found, but it seems to be encoded. For that, we will use CyberChef to decode it back 
+The Elastic Agent is now set up. Returning to Kibana, the server logs immediately begin appearing, confirming that Elasticsearch is successfully collecting telemetry from the endpoint!
 
-  <img width="975"  alt="image" src="https://github.com/user-attachments/assets/53228822-dc45-47b2-9479-ef89ee5fd601" />
-  <br>
-  <br>
-  
-  > ![](https://img.shields.io/badge/Answer-success) THM{pL4y_w1Th_tH3_URL}
+![Logs in Kibana](https://github.com/user-attachments/assets/258c97a9-0d89-4cd1-9bba-864437a6968f){: .shadow .rounded }
+_Figure 27: Validating log ingestion in Kibana's Discover tab._
 
+---
 
+## Phase 5: Attack Simulation & Triage
 
-    
+To test the lab's detection capabilities, an SSH brute force attack will be simulated using Hydra. Hydra can be easily installed on the server through the following command:
+```bash
+sudo apt install hydra -y
+```
+{: .nolineno }
+
+A fake password list is created to act as a reference dictionary for Hydra:
+
+```bash
+cat > passwords.txt << 'EOF'
+wrong1
+wrong2
+wrong3
+wrong4
+wrongpass
+123456
+admn
+EOF
+```
+{: .nolineno }
+
+![Creating Wordlist](https://github.com/user-attachments/assets/575183bb-67d1-4102-bae9-c77fd1d18f96){: .shadow .rounded }
+_Figure 28: Generating the brute-force dictionary._
+
+Then, the brute force attack is run locally against the server's SSH service:
+```bash
+hydra -l admn -P passwords.txt ssh://192.168.1.3
+```
+{: .nolineno }
+
+> **Simulation Note:** This will hammer the SSH daemon with multiple wrong passwords rapidly, which is much more realistic than attempting manual typing for testing threshold alerts.
+{: .prompt-warning }
+
+![Hydra Execution](https://github.com/user-attachments/assets/3450a42b-fc4a-428e-8f8a-7e20fc8be5d8){: .shadow .rounded }
+_Figure 29: Hydra successfully executing the brute-force attack._
+
+Now, to test if this attack was monitored and logged correctly, Kibana is utilized. 
+Navigate to **Menu ☰ -> Discover**, and ensure the `logs-*` index is selected. By searching for failed passwords, a massive spike of attempts in a highly condensed timeframe is revealed.
+```kql
+message: "Failed password"
+```
+{: .nolineno }
+
+![Detecting the Attack](https://github.com/user-attachments/assets/4b9acdfd-3c24-4ba4-b892-6a99c29328b9){: .shadow .rounded }
+_Figure 30: Hunting the brute force attack via KQL inside Kibana._
+
+<style>
+  /* 1. Fix the "Outside" (Home Page Cards) - prevents cropping */
+  .post-preview .preview-img img,
+  .post-preview .preview-img {
+    object-fit: contain !important;
+    background-color: #1b1b1e !important;
+  }
+
+  /* 2. Fix the "Inside" - Completely hides the header image and its spacing */
+  /* Using data-layout="post" guarantees this ONLY targets the opened post, never the home page */
+  body[data-layout="post"] .post-meta + .mt-3.mb-3,
+  body[data-layout="post"] .preview-img {
+    display: none !important;
+    visibility: hidden !important;
+    height: 0 !important;
+    margin: 0 !important;
+  }
+</style>
+````</HOST_IP_ADDRESS>
