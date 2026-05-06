@@ -6,7 +6,8 @@ categories: ["Home Lab", "SIEM Setup"]
 tags: [elastic, kibana, soc-lab, threat-hunting, blue-team, hydra]
 pin: true
 image:
-  path: https://github.com/user-attachments/assets/352c3e75-5bb0-44b9-9842-45e668fc4d7b
+  path: https://github.com/user-attachments/assets/6a43be0a-767d-4c21-b7dc-168eacb2d07c
+
 
 
   # This hides it from the internal post header in almost all Chirpy versions
@@ -17,7 +18,7 @@ image:
 
 # Home SOC Lab Deployment & Attack Simulation
 
-![Lab Architecture Header](https://github.com/user-attachments/assets/4a23bab8-9605-417b-b833-b79a8fb4e35a
+![Lab Architecture Header](https://github.com/user-attachments/assets/35599fa1-e526-4e65-ac1f-373df0864fce
 ){: .shadow .rounded }
 _Figure 1: SOC Home Lab Overview._
 
