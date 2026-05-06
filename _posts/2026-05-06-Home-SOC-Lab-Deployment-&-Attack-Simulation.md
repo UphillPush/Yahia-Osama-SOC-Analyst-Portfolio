@@ -15,7 +15,8 @@ image:
 
 # Home SOC Lab Deployment & Attack Simulation
 
-![Lab Architecture Header](){: .shadow .rounded }
+![Lab Architecture Header](<img width="983" height="112" alt="image" src="https://github.com/user-attachments/assets/362289e8-365f-44f2-a046-92577d63ddee" />
+){: .shadow .rounded }
 _Figure 1: SOC Home Lab Overview._
 
 ## Introduction & Architecture Overv
