@@ -363,5 +363,4 @@ Building these custom detection rules, writing the logic to minimize false posit
   }
 </style>
 
-/* Make all home page thumbnails fit without cropping */
 
