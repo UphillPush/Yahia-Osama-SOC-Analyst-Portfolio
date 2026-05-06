@@ -6,7 +6,7 @@ categories: ["Home Lab", "SIEM Setup"]
 tags: [elastic, kibana, soc-lab, threat-hunting, blue-team, hydra]
 pin: true
 image:
-  path: https://imgs.search.brave.com/Yc0gRQsw38lbgorjnHjuVSVaaDNYMxQCiXORXnEjqZc/rs:fit:860:0:0:0/g:ce/aHR0cHM6Ly9jZG4u/aWNvbnNjb3V0LmNv/bS9pY29uL2ZyZWUv/cG5nLTI1Ni9mcmVl/LWVsYXN0aWMtc2Vh/cmNoLWxvZ28taWNv/bi1zdmctZG93bmxv/YWQtcG5nLTI5NDQ4/NDcucG5nP2Y9d2Vi/cCZ3PTEyOA
+  path: https://cdn.worldvectorlogo.com/logos/elastic.svg
   # This hides it from the internal post header in almost all Chirpy versions
   preview: false
   # If the thumbnail is cropped, try adding this class
