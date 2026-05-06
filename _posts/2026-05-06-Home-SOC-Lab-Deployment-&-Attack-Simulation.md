@@ -22,7 +22,6 @@ image:
 _Figure 1: SOC Home Lab Overview._
 
 ## Introduction & Architecture Overv
-iew
 
 Before diving into the technical deployment, it is important to understand exactly what is being built in this lab and how the components interact. 
 
