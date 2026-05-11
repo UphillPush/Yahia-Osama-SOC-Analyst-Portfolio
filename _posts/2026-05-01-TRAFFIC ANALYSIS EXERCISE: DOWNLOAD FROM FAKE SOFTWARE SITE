@@ -1,7 +1,7 @@
 ---
 layout: post
-title: "TryHackMe: Snapped Phish-ing Line Walkthrough"
-date: 2026-10-00 00:00:00 +0200
+title: "TRAFFIC ANALYSIS EXERCISE: DOWNLOAD FROM FAKE SOFTWARE SITE"
+date: 2026-05-10 00:00:00 +0200
 categories: ["Threat Hunting & Triage", "Traffic Analysis"]
 tags: [wireshark, pcap, malware-analysis, blue-team, phishing]
 pin: false
