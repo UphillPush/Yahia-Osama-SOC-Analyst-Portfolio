@@ -16,7 +16,8 @@ image:
 
 # Hunting AS-REP Roasting in Active Directory
 
-![Lab Header](https://github.com/user-attachments/assets/3cd4145c-8211-42ce-88f9-a5e57fbf2d84){: .shadow .rounded }
+
+![Lab Header](https://github.com/user-attachments/assets/0d17d21e-a10c-4c2e-9881-0aa274a2941a){: .shadow .rounded }
 _Figure 1: Active Directory Log Analysis Overview._
 
 > **Sherlock Scenario**
