@@ -7,7 +7,8 @@ tags: [evtx, jq, as-rep-roasting, kerberos, blue-team, log-analysis]
 pin: false
 image:
 image:
-  path: https://github.com/user-attachments/assets/eac7aab9-4fb8-4d66-9de9-167e95a6d886 
+  path: https://github.com/user-attachments/assets/2b97dcbb-5efb-47b5-8d0b-880d76b0707b
+
   # This hides it from the internal post header in almost all Chirpy versions
   preview: false
   # If the thumbnail is cropped, try adding this class
