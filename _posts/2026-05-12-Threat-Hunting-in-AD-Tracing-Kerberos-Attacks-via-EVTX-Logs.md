@@ -10,7 +10,7 @@ image:
 
 
   # This hides it from the internal post header in almost all Chirpy versions
-  preview: false
+  preview: true
   # If the thumbnail is cropped, try adding this class
   class: img-contain
 ---
