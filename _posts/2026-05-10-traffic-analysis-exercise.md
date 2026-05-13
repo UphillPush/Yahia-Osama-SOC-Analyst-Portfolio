@@ -6,7 +6,8 @@ categories: ["Threat Hunting & Triage", "Traffic Analysis"]
 tags: [wireshark, pcap, malware-analysis, blue-team, phishing]
 pin: false
 image:
-  path: https://github.com/user-attachments/assets/6b585961-f1b5-4276-b01e-d1f4738941b3
+  path: https://github.com/user-attachments/assets/1126305d-a895-4541-9062-8ac470bf521d
+
 
 
   # This hides it from the internal post header in almost all Chirpy versions
