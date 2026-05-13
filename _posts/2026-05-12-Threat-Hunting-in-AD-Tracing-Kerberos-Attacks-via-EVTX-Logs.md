@@ -6,13 +6,12 @@ categories: ["Threat Hunting & Triage", "Active Directory"]
 tags: [evtx, jq, as-rep-roasting, kerberos, blue-team, log-analysis]
 pin: false
 image:
-  path: https://github.com/user-attachments/assets/70f714b3-7c3e-4554-89cd-65f6fbac0558
-
-
-  # This hides it from the internal post header in almost all Chirpy versions
-  preview: true
-  # If the thumbnail is cropped, try adding this class
-  class: img-contain
+image:
+  path: https://github.com/user-attachments/assets/eac7aab9-4fb8-4d66-9de9-167e95a6d886 
+  # This hides it from the internal post header in almost all Chirpy versions
+  preview: false
+  # If the thumbnail is cropped, try adding this class
+  class: img-contain
 ---
 
 # Hunting AS-REP Roasting in Active Directory
