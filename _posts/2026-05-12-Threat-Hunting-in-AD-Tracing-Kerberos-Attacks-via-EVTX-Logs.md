@@ -18,8 +18,6 @@ image:
 # Hunting AS-REP Roasting in Active Directory
 
 
-![Lab Header](https://github.com/user-attachments/assets/0d17d21e-a10c-4c2e-9881-0aa274a2941a){: .shadow .rounded }
-_Figure 1: Active Directory Log Analysis Overview._
 
 > **Sherlock Scenario**
 > Forela's network is constantly under attack. The security system raised an alert about an old admin account requesting a ticket from the KDC on a domain controller. Inventory shows that this user account is not actively used. You are tasked with investigating this activity, as it may be an AS-REP Roasting attack—a technique where an attacker can request a ticket for any user account that has preauthentication disabled.
