@@ -6,7 +6,8 @@ categories: ["Threat Hunting & Triage", "Active Directory"]
 tags: [evtx, jq, as-rep-roasting, kerberos, blue-team, log-analysis]
 pin: false
 image:
-  path: https://github.com/user-attachments/assets/1a2e10e7-4054-4c92-afb3-f7bdb416a2b
+  path: https://github.com/user-attachments/assets/70f714b3-7c3e-4554-89cd-65f6fbac0558
+
 
   # This hides it from the internal post header in almost all Chirpy versions
   preview: false
