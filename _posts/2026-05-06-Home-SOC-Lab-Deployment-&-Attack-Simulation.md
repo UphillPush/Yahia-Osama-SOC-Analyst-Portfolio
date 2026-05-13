@@ -6,7 +6,8 @@ categories: ["Home Lab", "SIEM Setup"]
 tags: [elastic, kibana, soc-lab, threat-hunting, blue-team, hydra]
 pin: true
 image:
-  path: https://github.com/user-attachments/assets/6a43be0a-767d-4c21-b7dc-168eacb2d07c
+  path: https://github.com/user-attachments/assets/9a9c33d2-03c9-4acf-9c7b-74737f3fc968
+
 
 
 
