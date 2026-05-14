@@ -6,7 +6,8 @@ categories: ["Threat Hunting & Triage", "SIEM Investigations"]
 tags: [volatility, memory-forensics, c2-detection, incident-response, blue-team]
 pin: true
 image:
-  path: https://tryhackme-images.s3.amazonaws.com/room-icons/2fb0a9b7f813718a338cbc765071c7e7.png
+  path: https://github.com/user-attachments/assets/9ceb6565-a501-478e-82d6-ed23bbc221b6
+
   # This hides it from the internal post header in almost all Chirpy versions
   preview: false
   # If the thumbnail is cropped, try adding this class
