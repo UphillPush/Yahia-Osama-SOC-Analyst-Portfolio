@@ -6,7 +6,8 @@ categories: ["Threat Hunting & Triage", "SIEM Investigations"]
 tags: [splunk, alert-triage, brute-force, web-shell, blue-team]
 pin: true
 image:
-  path: https://tryhackme-images.s3.amazonaws.com/room-icons/674d9727a22822c1eb46cb31-1760348096268
+  path: https://github.com/user-attachments/assets/6fdc392c-efc5-45a2-ac61-72a87afc3227
+
   # This hides it from the internal post header in almost all Chirpy versions
   preview: false
   # If the thumbnail is cropped, try adding this class
@@ -17,8 +18,6 @@ image:
 
 ## Alert Scenario 1
 
-![Scenario 1 Alert details](https://github.com/user-attachments/assets/2501fde8-9902-4ff6-a51b-6c41b8061cf3){: .shadow .rounded }
-_Figure 1: Initial alert trigger for SSH brute force._
 
 ---
 
