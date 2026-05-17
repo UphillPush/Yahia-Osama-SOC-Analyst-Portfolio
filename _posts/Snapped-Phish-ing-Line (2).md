@@ -201,17 +201,21 @@ For the Second rule is for detecting CreateRemoteThread Injection which is mappe
 
 ```xml
 <rule id="100011" level="12">
-    <if_group>sysmon</if_group>
-    <field name="win.system.eventID">^8$</field>
-    <description>Sysmon - CreateRemoteThread detected (T1055 Process Injection)</description>
-    <mitre>
-      <id>T1055</id>
-    </mitre>
-    <group>process_injection,</group>
-  </rule>
+  <if_group>sysmon</if_group>
+  <field name="win.system.eventID">^1$</field>
+  <field name="win.eventdata.parentImage" type="pcre2">(?i)cmd\.exe</field>
+  <field name="win.eventdata.image" type="pcre2">(?i)powershell\.exe</field>
+  <description>Sysmon - Suspicious cmd.exe spawning powershell.exe (T1059.003)</description>
+  <mitre>
+    <id>T1059.003</id>
+  </mitre>
+  <group>execution, lolbin,</group>
+</rule>
 ```
-`<if_group>sysmon</if_group> <field name="win.system.eventID">^8$</field>` -> the logs source and event ID is specifies and discussed why event ID 8 is choosen specifically for this rule 
-The rest is the same functionality discussed in the previous rule 
+event id 1 is utilized to analyze new process creations.
+the parentImage field is checked to verify cmd.exe initiated the action.
+the image field is checked to verify powershell.exe was the resulting child process.
+PCRE2 is applied so the rule triggers regardless of folder paths or capitalization.
 
 For the third rule, Registry Run Key Modification, it detects if there are any registry key changed, added, or even removed from the registery editor. Which is mapped in MITRE ATT&CK as Registry Run Keys / Startup Folder Persistence (MITRE T1547.001). This rule will monitor the sysmon event ID 13 (Registry Value Set). When an attacker gains an access to a machine, he want to keep presistent. So a they add a path to the malware in the windowns run registry key to force the PC to run the malware everytime the user logs into the machine. 
 
@@ -317,238 +321,51 @@ Where the command adds a registry key to the path `HKCU\SOFTWARE\Microsoft\Windo
 
 This could be detected when filtering with the rule ID 100011
 ```DQL
-rule.id: 100010
+rule.id: 100012
 ```
+<img width="1898" height="339" alt="image" src="https://github.com/user-attachments/assets/1d0649ab-7909-4d75-b8db-056e8207b125" />
+<img width="1890" height="859" alt="image" src="https://github.com/user-attachments/assets/ad3f553c-2220-425b-8cfe-494956688b78" />
 
 
-
-
-
-Note: The phishing emails to be analysed are under the phish-emails directory on the Desktop. Usage of a web browser, text editor and some knowledge of the grep command will help.
-
-## Answer the questions below
->![](https://img.shields.io/badge/Question-blue) Who is the individual who received an email attachment containing a PDF?
-
-
-
-#### First, open the phish-emails dir on the desktop and right-click `open terminal here`, then we need to search for the file that contains the pdf attachment. This can be achieved through the command
-
-```bash 
-grep -l 'name=".*\pdf"' *.eml
+#### Attack 3 — encoded PowerShell execution (T1059.001)
+From the Script block logging option enabled while installing the sysmon, the script block logging event ID is 4104
+```powershell
+$cmd = "Write-Host 'Simulated encoded payload executed — T1059.001'"
+$encoded = [Convert]::ToBase64String([Text.Encoding]::Unicode.GetBytes($cmd))
+powershell.exe -NonInteractive -EncodedCommand $encoded
 ```
-This will return the name of the eml file that has a pdf attachment. We want to find out who received that pdf. The command is tunneled with `xargs` to view how this email was sent to in the command below
+<img width="789" height="80" alt="image" src="https://github.com/user-attachments/assets/5ba0ee87-8677-4762-9cbe-cdb34203dbfa" />
 
-```bash 
-grep -l 'name=".*\pdf"' *.eml | xargs -d '\n' "To:"
+`$cmd = "Write-Host 'Simulated encoded payload executed — T1059.001'` -> As an analyst, this serves as your timestamp marker.
+`$encoded = [Convert]::ToBase64String([Text.Encoding]::Unicode.GetBytes($cmd))` The plain text string is translated into a scrambled format known as Base64.
+`powershell.exe -NonInteractive -EncodedCommand $encoded` A new, hidden PowerShell session is launched. The -NonInteractive flag is used to ensure no pop-up windows alert the user. Finally, the -EncodedCommand flag is utilized to pass the scrambled Base64 string directly into memory, where it is decoded and executed by the system
+
+event id 1 is used to only look at when new processes are created.
+AND is added so both conditions are forced to match.
+the commandline field is checked for the exact text typed.
+wildcards (*) are placed around EncodedCommand so the attack is caught if the evasion flag is hidden anywhere in the full string. 
+```DQL
+data.win.system.eventID: 1 AND data.win.eventdata.commandLine: *EncodedCommand*
 ```
+<img width="1903" height="336" alt="image" src="https://github.com/user-attachments/assets/f70e65f5-5cc4-4c30-b0a6-3690ea37c18a" />
+<img width="1874" height="838" alt="image" src="https://github.com/user-attachments/assets/24a04095-b46a-45a2-aa31-522fa62cebe0" />
 
-<img width="100%"  alt="code of answer1" src="https://github.com/user-attachments/assets/f9a4c4a7-1dde-4586-b319-f2bcbf498b41" />
-<br>
-<br>
-
->![](https://img.shields.io/badge/Answer-success) William McClean
-
-<br> 
-<br>
-<br> 
-<br>
-
-> ![](https://img.shields.io/badge/Question-blue) **What email address was used by the adversary to send the phishing emails?**
-#### The sender name of all files can be displayed with grep command too, as follows
-```bash
-grep -h -A 1 "^From:" *.eml"
+### Attack 4 — suspicious child process spawn (T1059 / parent-child anomaly)
+For the suspicious child process spawn, the rule that detects the anomalous parent-child relationship between built-in Windows binaries (LOLBins) is tested by this command
+```powershell
+cmd.exe /c "powershell.exe -NonInteractive -WindowStyle Hidden -Command Get-LocalUser"
 ```
-Where `-h` is used to hide the file name   
-&emsp; &emsp;&emsp;`-A` for displaying the line after the search keyword and the lines after, depending on the number follows <br> 
-&emsp;&emsp;  &emsp;   `1` number of lines to display after the line match <br>   
+Where the command utilizes the standard Windows command shell (cmd.exe) as a parent to secretly spawn a hidden PowerShell child process (powershell.exe) in order to enumerate local user accounts.
 
-  <img width="624"  alt="Picture3" src="https://github.com/user-attachments/assets/707fd174-9ef8-4df1-b6fa-45b6344ba6f5" />
-  <br>
-  <br>
-  
->![](https://img.shields.io/badge/Answer-success) Accounts.Payable@groupmarketingonline.icu
-
-<br> 
-<br>
-<br> 
-<br>
-
-> ![](https://img.shields.io/badge/Question-blue) **What is the redirection URL to the phishing page for the individual Zoe Duncan? (defanged format)**
-#### For this question, we have to open the email sent to Zoe and download the attached html to inspect it 
-<img width="1795" alt="Screenshot 2026-01-18 175342" src="https://github.com/user-attachments/assets/e0be1594-7286-4eef-a214-3aff404add25" />
-<img width="1798" alt="Screenshot 2026-01-18 175412" src="https://github.com/user-attachments/assets/da8fb663-f7ff-4d8c-999f-8cebc27fa606" />
-
-<br><br>
-Now, the html file must be inspected for any url inside it, which can be done through the commnad 
-```bash
-grep "http[^ ]" *.html
+This could be detected when filtering with the edited rule ID 100011 (or by explicitly searching the EID 1 parent and child image fields)
+```DQL
+rule.id: 100012
 ```
-<img width="1132"  alt="Screenshot 2026-01-18 175932" src="https://github.com/user-attachments/assets/2fecd1a0-3253-4df7-b2e4-30704c38a282" />
-<br> 
-<br>
-So the URL is:   
-
-http://kennaroads.buzz/data/Update365/office365/40e7baa2f826a57fcf04e5202526f8bd/?email=zoe.duncan@swiftspend.finance&error    
-
-  
-This URL has to be defanged as required in the question, so Cyberchef was used to do it: 
-<br> 
-<br> 
-<img width="100%"  alt="Picture4" src="https://github.com/user-attachments/assets/83df2aca-2f4f-46bd-b081-dafb5ddfdbc3" />   
-<br> 
->![](https://img.shields.io/badge/Answer-success) hxxp[://]kennaroads[.]buzz/data/Update365/office365/40e7baa2f826a57fcf04e5202526f8bd/?email=zoe[.]duncan@swiftspend[.]finance&error
-<br>
-<br>
-<br>
-<br>
-
-> ![](https://img.shields.io/badge/Question-blue) **What is the URL to the .zip archive of the phishing kit? (defanged format)**
-#### The phishing URL sent to Zeo has a specific path to her, but if we remove the path related to the user, it will direct us to some files it's hosting 
-so for the link:   
-http://kennaroads.buzz/data/Update365/office365/40e7baa2f826a57fcf04e5202526f8bd/?email=zoe.duncan@swiftspend.finance&error  
-we will just keep the main path:   
-http://kennaroads.buzz/data/Update365/  
-<img width="624" height="312" alt="Picture5" src="https://github.com/user-attachments/assets/80a14ab3-5ad4-4aaf-8bd6-227cbfae57d0" />
-<br>
-<br>
-There is no `.zip` file here, so going back a bit to the link:  
-http://kennaroads.buzz/data    
-
-show us this page   
-
-   <img width="624" height="303" alt="Picture6" src="https://github.com/user-attachments/assets/e66c4b1f-14e2-4d7c-b9e4-7a3944e648c4" /> 
-   <br>
-   <br> 
-   Now, we can clearly see the `.zip` archive of the phishing kit, which is Update365.zip
-   so the link we are looking for is:   
-   http://kennaroads.buzz/data/Update365.zip    
-   
-   defang this URL using CyberChef:   
-<img width="1430" height="695" alt="Picture7" src="https://github.com/user-attachments/assets/3d22b28d-70d0-4290-9310-5a1de12ed48b" />
-<br>
-<br>
-
->![](https://img.shields.io/badge/Answer-success) hxxp[://]kennaroads[.]buzz/data/Update365[.]zip
-<br>
-<br>
-<br>
-<br>
-
-> ![](https://img.shields.io/badge/Question-blue) **What is the SHA256 hash of the phishing kit archive?**
-#### Download the Update365.zip in the phish-emails dir, then in the terminal write the command:   
-```bash
-sha256sum Update365.zip
-```
-
-<img width="624" height="232" alt="Picture8" src="https://github.com/user-attachments/assets/d5a3d8b7-99a4-46ef-9898-689ec866dec5" />
-<br> 
-<br>
-
-> ![](https://img.shields.io/badge/Answer-success) ba3c15267393419eb08c7b2652b8b6b39b406ef300ae8a18fee4d16b19ac9686
-     
-<br>
-<br>
-<br>
-<br>
-
-> ![](https://img.shields.io/badge/Question-blue) **When was the phishing kit archive first submitted? (format: YYYY-MM-DD HH:MM:SS UTC)**
-#### Using an open-source, popular tool for investigating viruses, VirusTotal is the best option.   
-In my browser, I visited virustotal page and inserted the archive sha256 hash to scan it, and easily saw the submission date  
-<img width="100%"  alt="image" src="https://github.com/user-attachments/assets/0dd5610f-7af5-4716-9f1a-aa2217ffffeb" />
-
-<br> 
-<br>
-
-> ![](https://img.shields.io/badge/Answer-success) 2020-04-08 21:55:50 UTC
-
-<br>
-<br>
-<br>
-<br>
-
-> ![](https://img.shields.io/badge/Question-blue) **What was the email address of the user who submitted their password twice?**
-#### The best way to track the login attempts is through logs, and in previous questions its know where are the hosting files  
-so back again to the link:   
-http://kennaroads.buzz/data    
-
-a `log.txt` file is seen, open it and try to look up for repeated email or password     
-
-<img width="975"  alt="image" src="https://github.com/user-attachments/assets/1c7fb47b-d887-417a-8015-05320392bb11" />  
-
-> ![](https://img.shields.io/badge/Answer-success) michael.ascot@swiftspend.finance
-<br>
-<br>
-<br>
-<br>
-
-> ![](https://img.shields.io/badge/Question-blue) **What was the email address used by the adversary to collect compromised credentials?**
-#### To know this we have to investigate more in the phishing kit archive, heading back to the host website at:   
-http://kennaroads.buzz/data/Update365.zip     
-
-   the Update365.zip is downloaded, then we move it to the phish-emails dir to investigate it using the command
-   ```bash
-  mv ~/Downloads/Update365.zip .
-```
-Then Unzip it using the command  
-```bash
-unzip Update365.zip
-```
-
-<img width="1289"  alt="image" src="https://github.com/user-attachments/assets/35f93b98-3539-4862-b259-c185e12e83cd" />
-
-  The file that collects emails and send it have the word send in it for sure and is in the Update365 folder, so searching for files that contain the send keyword using the command  
-  ```bash
-grep -r "*send"
-```
-we found  
-
-<img width="1134" alt="image" src="https://github.com/user-attachments/assets/fa5c1788-f72f-4d80-985b-d78edfb768f2" />   
-
-  The submit.php is the file responsible for the submit button, to further investigate it we tunneled the command with cat
-<img width="975"  alt="image" src="https://github.com/user-attachments/assets/75cc76b2-1453-4bab-a78b-d8112be8b627" />
-<img width="975" alt="image" src="https://github.com/user-attachments/assets/dd1122d7-87e0-4335-a413-37ad673aaa00" />
-<br>
-
-
-Here, another suspicious email is found, and the responses are sent to whom is 
-> ![](https://img.shields.io/badge/Answer-success) m3npat@yandex.com
-<br>
-<br>
-<br>
-<br>
-
-> ![](https://img.shields.io/badge/Question-blue) **The adversary used other email addresses in the obtained phishing kit. What is the email address that ends in "@gmail.com"?**
-#### This one is easy, you just have to search for an email that ends with @gmail.com using the command:  
-```bash
-grep -r "@gmail.com"
-```
-<img width="1319"  alt="image" src="https://github.com/user-attachments/assets/88218dd2-ad78-4a3f-bb85-7f103140ebc8" />
-<br>
-<br>
-
-> ![](https://img.shields.io/badge/Answer-success) jamestanner2299@gmail.com
-<br>
-<br>
-<br>
-<br>
-
-> ![](https://img.shields.io/badge/Question-blue) **What is the hidden flag?**
-
-Reading the instruction for this one :   
-<img width="651" alt="image" src="https://github.com/user-attachments/assets/6a401184-e86a-4eba-aa40-fbc8d4539d84" />  
-
-  Then the flag is a text file that is a subdomain or a directory of the phishing URL, since there is no enumeration tool in the VM like Gobuster, I guessed its called `flag.txt`   
-  so I tried this directory in the URL :   
-  <img width="975"  alt="image" src="https://github.com/user-attachments/assets/42596687-eee8-4ac9-a91e-5ada5691f5e9" />
-  <br> 
-  So the flag is found, but it seems to be encoded. For that, we will use CyberChef to decode it back 
-
-  <img width="975"  alt="image" src="https://github.com/user-attachments/assets/53228822-dc45-47b2-9479-ef89ee5fd601" />
-  <br>
-  <br>
-  
-  > ![](https://img.shields.io/badge/Answer-success) THM{pL4y_w1Th_tH3_URL}
+<img width="1891" height="917" alt="image" src="https://github.com/user-attachments/assets/cb5b9938-9815-4434-b99a-c10fc213b9fe" />
 
 
 
-    
+
+
+
+
