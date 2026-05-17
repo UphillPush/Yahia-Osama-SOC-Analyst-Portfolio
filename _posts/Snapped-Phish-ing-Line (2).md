@@ -227,9 +227,79 @@ For the third rule, Registry Run Key Modification, it detects if there are any r
 ```
 `<rule id="100012" level="10">` -> the severity of this rule is high but lower than the prevoius rules, level is set to 10. 
 `<if_group>sysmon</if_group>  <field name="win.system.eventID">^13$</field> <field` -> selecting the source of logs as sysmon specifically for the event 13 that detects any changes in the registry editor 
-` <field name="win.eventdata.targetObject" type="pcre2">(?i)CurrentVersion.*Run</field>` -> When a registry key is modifies, the exact registry path modified is recorded in targetObject 
+` <field name="win.eventdata.targetObject" type="pcre2">(?i)CurrentVersion.*Run</field>` -> When a registry key is modifies, the exact registry path modified is recorded in targetObject. the path CurrentVersion.*Run is used to decide which application and programs will run when the PC is powered on and the user logs in, so putting a malware in this registry path will execute it everytime the PC runs. Using this as a reference to detect if there is any attacker trying to gain presistance to the machine, would alert and reduce any presistance chances, specially with the wildcard `.*` to include all variation of baths in run and (?i) along with prec2 to ignore case sensitivity
 
+Now after setting the 3 main roles, the local_rules.xml file is updated with them to be included in wazuh alerting 
+```shell
+sudo nano /var/ossec/etc/rules/local_rules.xml
+```
+Add the 3 rules to the xml file
+```xml
+<group name="sysmon,attack,">
 
+  <rule id="100010" level="15">
+    <if_group>sysmon</if_group>
+    <field name="win.eventdata.targetImage" type="pcre2">(?i)lsass\.exe</field>
+    <description>Sysmon - LSASS memory access detected (T1003.001)</description>
+    <mitre>
+      <id>T1003.001</id>
+    </mitre>
+    <group>credential_access,</group>
+  </rule>
+
+  <rule id="100011" level="12">
+    <if_group>sysmon</if_group>
+    <description>Sysmon - CreateRemoteThread detected (T1055 Process Injection)</description>
+    <mitre>
+      <id>T1055</id>
+    </mitre>
+    <group>process_injection,</group>
+  </rule>
+
+  <rule id="100012" level="10">
+    <if_group>sysmon</if_group>
+    <field name="win.system.eventID">^13$</field>
+    <field name="win.eventdata.targetObject" type="pcre2">(?i)CurrentVersion.*Run</field>
+    <description>Sysmon - Registry Run key persistence (T1547.001)</description>
+    <mitre>
+      <id>T1547.001</id>
+    </mitre>
+    <group>persistence,</group>
+  </rule>
+
+</group>
+```
+then hit Ctrl+O then Enter to save 
+and Ctrl+x to close
+<img width="973" height="653" alt="image" src="https://github.com/user-attachments/assets/ac166270-3f67-4c10-b151-dd9cf245c377" />
+
+Then the wazuh control has to be restarted to apply the rules
+```shell
+sudo /var/ossec/bin/wazuh-control restart
+```
+<img width="975" height="389" alt="Screenshot 2026-05-17 002357" src="https://github.com/user-attachments/assets/bf902f89-86fa-4546-a34d-c3ee47e89d33" />
+
+### Firing the attacks & confirming detections
+Now its time for the most interesting part, the attacking and detecting where work done is tested
+
+#### Attack 1 (LSASS memory access (T1003.001) — PowerShell, run as Administrator)
+To test the lsass memory access, the following commands are fired 
+```powershell
+$lsass = Get-Process lsass
+$handle = [System.Runtime.InteropServices.Marshal]::AllocHGlobal(1)
+Write-Host "LSASS PID: $($lsass.Id) — Sysmon EID 10 should fire now"
+rundll32.exe C:\Windows\System32\comsvcs.dll, MiniDump $($lsass.Id) C:\Windows\Temp\lsass_dump.dmp full
+```
+breaking it up to lines 
+`$lsass = Get-Process lsass`  -> this script queries the operating system to find an active instance of lsass and store it in variable `$lsass` 
+`$handle = [System.Runtime.InteropServices.Marshal]::AllocHGlobal(1)` -> The `$handle` line is used strictly as an evasion tactic to trick basic antivirus software. By forcing the script to perform low-level memory allocation, the attacker attempts to make the file look like a legitimate administrative tool rather than malware.
+`Write-Host "LSASS PID: $($lsass.Id) — Sysmon EID 10 should fire now"` -> As an analyst, this serves as your timestamp marker.
+`rundll32.exe C:\Windows\System32\comsvcs.dll, MiniDump $($lsass.Id) C:\Windows\Temp\lsass_dump.dmp full` -> This step is where the attacker is getting the info. It uses a built in windows utility rundl32.exe to run legitimate process comsvcs.dll and use its MiniDump option to store the full data of the process of the variable `$lsass` in  `C:\Windows\Temp\lsass_dump.dmp` path 
+
+<img width="792" height="559" alt="Screenshot 2026-05-17 002622" src="https://github.com/user-attachments/assets/2059d563-961d-4be0-8a7e-195c6fae5515" />
+
+windows defender could detect it and prevent the process, but if it didn't 
+the process is detected and alerted in Wazuh by the rule id `100010`
 
 
 
