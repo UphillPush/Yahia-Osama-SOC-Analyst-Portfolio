@@ -1,7 +1,7 @@
 ---
 layout: post
 title: "Sysmon + Wazuh: Real EDR Telemetry Generation & Detection"
-date: 2026-05-17 00:00:00 +0200
+date: 2026-05-16 00:00:00 +0200
 categories: ["Home Lab", "Detection Engineering"]
 tags: [wazuh, sysmon, edr, mitre-attack, blue-team, threat-hunting]
 pin: false
