@@ -7,7 +7,8 @@ categories: ["Home Lab", "Detection Engineering"]
 tags: [wazuh, sysmon, edr, mitre-attack, blue-team, threat-hunting]
 pin: false
 image:
-  path: https://github.com/user-attachments/assets/3cd4145c-8211-42ce-88f9-a5e57fbf2d84
+  path: https://github.com/user-attachments/assets/70331909-e494-4d6c-83da-9def30b5f9a2
+
   # This hides it from the internal post header in almost all Chirpy versions
   preview: false
   # If the thumbnail is cropped, try adding this class
@@ -16,7 +17,7 @@ image:
 
 # Sysmon + Wazuh: Real EDR Telemetry Generation
 
-![Lab Header](https://github.com/user-attachments/assets/3cd4145c-8211-42ce-88f9-a5e57fbf2d84){: .shadow .rounded }
+![Lab Header](https://github.com/user-attachments/assets/9395b4fd-0fff-47e1-a6f7-943373e58679){: .shadow .rounded }
 _Figure 1: EDR Telemetry Generation Lab._
 
 > **Executive Summary**
