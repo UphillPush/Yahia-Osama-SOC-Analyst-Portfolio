@@ -300,9 +300,25 @@ breaking it up to lines
 
 windows defender could detect it and prevent the process, but if it didn't 
 the process is detected and alerted in Wazuh by the rule id `100010`
+```DQL
+rule.id: 100010
+```
+<img width="1903" height="337" alt="image" src="https://github.com/user-attachments/assets/eac44c77-4b31-4e19-b985-2ffa25ca2bd3" />
+<img width="1887" height="328" alt="image" src="https://github.com/user-attachments/assets/84b1f9c1-9faa-49d1-9564-910ab8c01354" />
 
 
+#### Attack 2 — Registry Run key persistence (T1547.001)
+For the registry keys, the rule that detects the change of windows run registery keys are tested by this command 
+```powershell 
+reg add "HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\Run" /v "LabPersistence" /t REG_SZ /d "C:\Windows\System32\calc.exe" /f
+Write-Host "Run key added — Sysmon EID 13 should fire"
+```
+Where the command adds a registry key to the path `HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\Run` which is a run registry path 
 
+This could be detected when filtering with the rule ID 100011
+```DQL
+rule.id: 100010
+```
 
 
 
