@@ -7,8 +7,7 @@ categories: ["Home Lab", "Detection Engineering"]
 tags: [wazuh, sysmon, edr, mitre-attack, blue-team, threat-hunting]
 pin: false
 image:
-  path: https://github.com/user-attachments/assets/70331909-e494-4d6c-83da-9def30b5f9a2
-
+  path: https://github.com/user-attachments/assets/3cd4145c-8211-42ce-88f9-a5e57fbf2d84
   # This hides it from the internal post header in almost all Chirpy versions
   preview: false
   # If the thumbnail is cropped, try adding this class
@@ -17,10 +16,9 @@ image:
 
 # Sysmon + Wazuh: Real EDR Telemetry Generation
 
-![Lab Header](https://github.com/user-attachments/assets/9395b4fd-0fff-47e1-a6f7-943373e58679){: .shadow .rounded }
+![Lab Header](https://github.com/user-attachments/assets/3cd4145c-8211-42ce-88f9-a5e57fbf2d84){: .shadow .rounded }
 _Figure 1: EDR Telemetry Generation Lab._
 
-> **Executive Summary**
 > **Situation:** It is expected for most SOC analysts to know EDR telemetry, but entry roles rarely explain how the raw events actually look. This lab was built to generate real Sysmon telemetry from actual attack simulations targeting four MITRE ATT&CK techniques used in initial access and persistence. Wazuh detection logic was built entirely from scratch.
 > 
 > **Task:** A two-VM home lab was deployed. A Windows 10 target with Sysmon and a Wazuh agent was set up alongside an Ubuntu 22.04 server for the Wazuh manager. Sysmon telemetry ingestion was configured and custom Wazuh rules were written for each technique. The goal was to document the full chain from the attack execution to the analyst alert.
@@ -45,13 +43,14 @@ To accurately simulate a production environment, the lab infrastructure was divi
 
 After provisioning the Ubuntu virtual machine, the Wazuh manager was downloaded and installed using the automated installation script:
 
-```shell
+```bash
 curl -sO [https://packages.wazuh.com/4.7/wazuh-install.sh](https://packages.wazuh.com/4.7/wazuh-install.sh)
 sudo bash wazuh-install.sh -a
 ```
 {: .nolineno }
 
 ![Wazuh Installation](https://github.com/user-attachments/assets/a36d2dc4-fe5d-4a78-afeb-153346476e04){: .shadow .rounded }
+_Figure 2: Executing the Wazuh installation script._
 
 Once complete, the terminal outputs the administrative credentials alongside an "Installation finished" message.
 
@@ -59,7 +58,7 @@ Once complete, the terminal outputs the administrative credentials alongside an 
 
 To verify that the core services were successfully initialized, the status of both the manager and the dashboard was checked. Both must display the `active (running)` state.
 
-```shell
+```bash
 sudo systemctl status wazuh-manager
 sudo systemctl status wazuh-dashboard
 ```
@@ -69,7 +68,7 @@ sudo systemctl status wazuh-dashboard
 
 The Wazuh dashboard can be accessed from any browser on the same network. The local IP address of the Ubuntu server is required to navigate to the web interface.
 
-```shell
+```bash
 ip a
 ```
 {: .nolineno }
@@ -78,7 +77,7 @@ ip a
 
 Next, the Wazuh manager's internal status is verified to ensure all components are fully operational:
 
-```shell
+```bash
 sudo /var/ossec/bin/wazuh-control status
 ```
 {: .nolineno }
@@ -110,7 +109,8 @@ Sysmon was downloaded directly from the official Microsoft Sysinternals reposito
 
 ![Sysmon Download](https://github.com/user-attachments/assets/6aedaa2c-30d3-42a9-8d7a-f215bf68f318){: .shadow .rounded }
 
-Sysmon acts like a massive high-definition security camera; it collects everything happening on the PC. If it is turned on and left without any instructions, it will log absolutely everything, creating an overwhelming amount of noise. As a SOC analyst, one of the best practices is to tune the signal-to-noise ratio using an XML file that directs Sysmon to collect only suspicious patterns and processes.
+> **Noise is the enemy:** Sysmon acts like a massive high-definition security camera. If it is turned on and left without any instructions, it will collect absolutely everything happening on the PC, creating an overwhelming amount of noise. Tuning the signal-to-noise ratio is critical.
+{: .prompt-warning }
 
 This is where the **SwiftOnSecurity Configuration** comes in. The configuration XML is downloaded from:
 `https://github.com/SwiftOnSecurity/sysmon-config`
@@ -134,9 +134,7 @@ cd C:\Users\<current user>\Downloads\Sysmon
 To verify that Sysmon actually records the intended events, the following command was run in PowerShell. It pulls the 10 most recent logs directly from the Sysmon event database into the terminal, filtering for just the time, Event ID, and message details.
 
 ```powershell
-Get-WinEvent -LogName "Microsoft-Windows-Sysmon/Operational" -MaxEvents 10 |
-  Select TimeCreated, Id, Message |
-  Format-List
+Get-WinEvent -LogName "Microsoft-Windows-Sysmon/Operational" -MaxEvents 10 | Select TimeCreated, Id, Message | Format-List
 ```
 {: .nolineno }
 
@@ -202,7 +200,8 @@ The service output shows `STATE : RUNNING`, which is a positive indicator that t
 
 By default, the agent only sends standard Windows logs. It must be explicitly configured to forward Sysmon logs. Opening the `C:\Program Files (x86)\ossec-agent\ossec.conf` file in a text editor, the instructions for forwarding the new operational channels are appended:
 
-```xml 
+```xml
+{: file="C:\Program Files (x86)\ossec-agent\ossec.conf" }
 <localfile>
   <location>Microsoft-Windows-Sysmon/Operational</location>
   <log_format>eventchannel</log_format>
@@ -218,7 +217,6 @@ By default, the agent only sends standard Windows logs. It must be explicitly co
   <log_format>eventchannel</log_format>
 </localfile>
 ```
-{: .nolineno }
 
 ![Wazuh Config XML](https://github.com/user-attachments/assets/c3c8ec91-a41c-494f-af6d-3d9a5ef3bc0c){: .shadow .rounded }
 
@@ -237,7 +235,7 @@ NET START WazuhSvc
 To make detection more efficient and rapid, custom logic must be engineered in Wazuh. Three specific rules were developed to discover LSASS Memory Access, CreateRemoteThread Injection, and Registry Run Key Modification.
 
 ### 1. LSASS Memory Access (Rule 100010)
-LSASS (Local Security Authority Subsystem Service) caches user sign-in credentials for single sign-on, preventing the repetition of password prompts. Attackers access this memory to extract hashed or plaintext user passwords. Because of its critical nature, it is assigned the highest severity level (15).
+LSASS (Local Security Authority Subsystem Service) caches user sign-in credentials for single sign-on, preventing the repetition of password prompts. Attackers access this memory to extract hashed or plaintext user passwords. Because of its critical nature, it is assigned the highest severity level (`15`).
 
 ```xml
 <rule id="100010" level="15">
@@ -252,13 +250,14 @@ LSASS (Local Security Authority Subsystem Service) caches user sign-in credentia
 ```
 {: .nolineno }
 
-**Rule Breakdown:**
-* `<rule id="100010" level="15">`: Sets the ID for the rule and establishes the maximum alert level.
-* `<if_group>sysmon</if_group>` / `<field name="win.system.eventID">^10$</field>`: Selects the log type and isolates Event ID 10, which detects process access.
-* `<field name="win.eventdata.targetImage" type="pcre2">(?i)lsass\.exe</field>`: Specifies the accessed process. The `type="pcre2"` attribute enables advanced regex, and `(?i)` ignores case sensitivity. Even if an attacker types `LSASS.exe`, it will still trigger the alert.
+> **Rule Breakdown:**
+> * `<rule id="100010" level="15">`: Sets the ID for the rule and establishes the maximum alert level.
+> * `<if_group>sysmon</if_group>` / `<field name="win.system.eventID">^10$</field>`: Selects the log type and isolates Event ID 10, which detects process access.
+> * `<field name="win.eventdata.targetImage" type="pcre2">(?i)lsass\.exe</field>`: Specifies the accessed process. The `type="pcre2"` attribute enables advanced regex, and `(?i)` ignores case sensitivity. Even if an attacker types `LSASS.exe`, it will still trigger the alert.
+{: .prompt-info }
 
 ### 2. Process Injection / CreateRemoteThread (Rule 100011)
-Malware utilizes this technique to hide from security tools. Instead of running a suspicious `.exe` file on disk, the malware injects its malicious code directly into the active memory of a trusted Windows process. The trusted process does the dirty work, making the attack appear as legitimate system activity. This rule is set to a high severity (12).
+Malware utilizes this technique to hide from security tools. Instead of running a suspicious `.exe` file on disk, the malware injects its malicious code directly into the active memory of a trusted Windows process. The trusted process does the dirty work, making the attack appear as legitimate system activity. This rule is set to a high severity (`12`).
 
 ```xml
 <rule id="100011" level="12">
@@ -275,11 +274,12 @@ Malware utilizes this technique to hide from security tools. Instead of running 
 ```
 {: .nolineno }
 
-**Rule Breakdown:**
-* Event ID 1 is utilized to analyze new process creations.
-* The `parentImage` field is checked to verify `cmd.exe` initiated the action.
-* The `image` field is checked to verify `powershell.exe` was the resulting child process.
-* PCRE2 is applied so the rule triggers regardless of folder paths or capitalization.
+> **Rule Breakdown:**
+> * Event ID 1 is utilized to analyze new process creations.
+> * The `parentImage` field is checked to verify `cmd.exe` initiated the action.
+> * The `image` field is checked to verify `powershell.exe` was the resulting child process.
+> * `PCRE2` is applied so the rule triggers regardless of folder paths or capitalization.
+{: .prompt-info }
 
 ### 3. Registry Run Key Modification (Rule 100012)
 This detects if any registry keys are changed, added, or removed. When an attacker gains access to a machine, they want to maintain persistence. They add a path to their malware in the Windows run registry key to force the PC to run the malware every time the user logs in.
@@ -298,26 +298,27 @@ This detects if any registry keys are changed, added, or removed. When an attack
 ```
 {: .nolineno }
 
-**Rule Breakdown:**
-* `<rule id="100012" level="10">`: Severity is high, but lower than the previous rules.
-* `<field name="win.system.eventID">^13$</field>`: Specifically isolates Sysmon Event 13, which detects changes in the registry editor.
-* `<field name="win.eventdata.targetObject" type="pcre2">(?i)CurrentVersion.*Run</field>`: When a registry key is modified, the exact path is recorded here. Putting malware in this path executes it upon every startup. The wildcard `.*` ensures all variations of paths in the Run hive are included.
+> **Rule Breakdown:**
+> * `<rule id="100012" level="10">`: Severity is high, but lower than the previous rules.
+> * `<field name="win.system.eventID">^13$</field>`: Specifically isolates Sysmon Event 13, which detects changes in the registry editor.
+> * `<field name="win.eventdata.targetObject" type="pcre2">(?i)CurrentVersion.*Run</field>`: When a registry key is modified, the exact path is recorded here. Putting malware in this path executes it upon every startup. The wildcard `.*` ensures all variations of paths in the Run hive are included.
+{: .prompt-info }
 
 ### Applying the Rules
 The `local_rules.xml` file is opened and updated with these custom rules to include them in the Wazuh alerting engine:
 
-```shell
+```bash
 sudo nano /var/ossec/etc/rules/local_rules.xml
 ```
 {: .nolineno }
 
-The XML block containing all three rules is pasted inside the `<group name="sysmon,attack,">` tag. The file is saved using `Ctrl+O` and closed with `Ctrl+X`.
+The XML block containing all three rules is pasted inside the `<group name="sysmon,attack,">` tag. The file is saved using <kbd>Ctrl</kbd> + <kbd>O</kbd> and closed with <kbd>Ctrl</kbd> + <kbd>X</kbd>.
 
 ![Saving Local Rules](https://github.com/user-attachments/assets/ac166270-3f67-4c10-b151-dd9cf245c377){: .shadow .rounded }
 
 Finally, the Wazuh manager is restarted to load and apply the new logic:
 
-```shell
+```bash
 sudo /var/ossec/bin/wazuh-control restart
 ```
 {: .nolineno }
@@ -341,11 +342,12 @@ rundll32.exe C:\Windows\System32\comsvcs.dll, MiniDump $($lsass.Id) C:\Windows\T
 ```
 {: .nolineno }
 
-**Script Breakdown:**
-* `$lsass = Get-Process lsass` -> This queries the operating system to find an active instance of LSASS and stores it in a variable.
-* `$handle = ...` -> This line is used strictly as an evasion tactic to trick basic antivirus software. By forcing the script to perform low-level memory allocation, the attacker attempts to make the payload look like a legitimate administrative tool rather than malware.
-* `Write-Host...` -> As an analyst, this serves as a timestamp marker.
-* `rundll32.exe...` -> This is where the attacker extracts the information. It uses a built-in Windows utility (`rundll32.exe`) to run a legitimate process (`comsvcs.dll`) and leverages its `MiniDump` option to store the full data of the LSASS process in a temporary `.dmp` file.
+> **Script Breakdown:**
+> * `$lsass = Get-Process lsass` -> This queries the operating system to find an active instance of LSASS and stores it in a variable.
+> * `$handle = ...` -> This line is used strictly as an evasion tactic to trick basic antivirus software. By forcing the script to perform low-level memory allocation, the attacker attempts to make the payload look like a legitimate administrative tool rather than malware.
+> * `Write-Host...` -> As an analyst, this serves as a timestamp marker.
+> * `rundll32.exe...` -> This is where the attacker extracts the information. It uses a built-in Windows utility (`rundll32.exe`) to run a legitimate process (`comsvcs.dll`) and leverages its `MiniDump` option to store the full data of the LSASS process in a temporary `.dmp` file.
+{: .prompt-tip }
 
 ![LSASS Execution](https://github.com/user-attachments/assets/2059d563-961d-4be0-8a7e-195c6fae5515){: .shadow .rounded }
 
@@ -390,10 +392,11 @@ powershell.exe -NonInteractive -EncodedCommand $encoded
 
 ![Encoded PowerShell](https://github.com/user-attachments/assets/5ba0ee87-8677-4762-9cbe-cdb34203dbfa){: .shadow .rounded }
 
-**Script Breakdown:**
-* `$cmd = ...` -> Sets the timestamp marker.
-* `$encoded = ...` -> The plain text string is translated into a scrambled format known as Base64.
-* `powershell.exe -NonInteractive -EncodedCommand $encoded` -> A new, hidden PowerShell session is launched. The `-NonInteractive` flag ensures no pop-up windows alert the user. Finally, the `-EncodedCommand` flag is utilized to pass the scrambled Base64 string directly into memory, where it is decoded and executed by the system.
+> **Script Breakdown:**
+> * `$cmd = ...` -> Sets the timestamp marker.
+> * `$encoded = ...` -> The plain text string is translated into a scrambled format known as Base64.
+> * `powershell.exe -NonInteractive -EncodedCommand $encoded` -> A new, hidden PowerShell session is launched. The `-NonInteractive` flag ensures no pop-up windows alert the user. Finally, the `-EncodedCommand` flag is utilized to pass the scrambled Base64 string directly into memory, where it is decoded and executed by the system.
+{: .prompt-tip }
 
 Using Dashboard Query Language (DQL), the event is located. Event ID 1 is utilized to look at new process creations, and wildcards `*` are placed around `EncodedCommand` so the attack is caught if the evasion flag is hidden anywhere in the full string.
 
