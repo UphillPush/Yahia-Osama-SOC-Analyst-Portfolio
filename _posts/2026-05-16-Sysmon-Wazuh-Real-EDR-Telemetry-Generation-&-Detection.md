@@ -7,7 +7,8 @@ categories: ["Home Lab", "Detection Engineering"]
 tags: [wazuh, sysmon, edr, mitre-attack, blue-team, threat-hunting]
 pin: false
 image:
-  path: https://github.com/user-attachments/assets/3cd4145c-8211-42ce-88f9-a5e57fbf2d84
+  path: https://github.com/user-attachments/assets/c2f41281-2168-467f-91b5-eb856dfbbf27
+
   # This hides it from the internal post header in almost all Chirpy versions
   preview: false
   # If the thumbnail is cropped, try adding this class
@@ -16,7 +17,7 @@ image:
 
 # Sysmon + Wazuh: Real EDR Telemetry Generation
 
-![Lab Header](https://github.com/user-attachments/assets/3cd4145c-8211-42ce-88f9-a5e57fbf2d84){: .shadow .rounded }
+![Lab Header](https://github.com/user-attachments/assets/5c25e87c-e87f-4cd8-8f28-e824adfdd659){: .shadow .rounded }
 _Figure 1: EDR Telemetry Generation Lab._
 
 > **Situation:** It is expected for most SOC analysts to know EDR telemetry, but entry roles rarely explain how the raw events actually look. This lab was built to generate real Sysmon telemetry from actual attack simulations targeting four MITRE ATT&CK techniques used in initial access and persistence. Wazuh detection logic was built entirely from scratch.
