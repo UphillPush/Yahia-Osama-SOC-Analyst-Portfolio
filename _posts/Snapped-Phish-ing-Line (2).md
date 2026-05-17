@@ -172,9 +172,62 @@ NET START WazuhSvc
 
 ### Adding rules to Wazuh server 
 
-A custom Wazuh rule is added for LSASS access 
+For making  the detection more efficient and fast, some rules need to be made in Wazuh 
+like a rule to discover an LSASS Memory Access, CreateRemoteThread Injection or even Registry run key modification
 
+For each one of these a rule will be made and explained in details how to implement the rule 
+First, the LSASS Memory which is an abbreviation for *(Local Security Authority Subsystem Service)* where the user sign in credentials are cached for single sign on prepvention the repetition of password prompts
+This technique is mapped in MITRE ATT&CK as (MITRE T1003.001) as credential dumping. The attacker accesses this memory to extract hashed or plaintext user passwords, then it hast to have the highest severity level (15).
 
+```xml
+<rule id="100010" level="15">
+  <if_group>sysmon_event10</if_group>
+  <field name="win.eventdata.targetImage" type="pcre2">(?i)lsass\.exe</field>
+  <description>Sysmon - LSASS memory access detected (T1003.001)</description>
+  <mitre>
+    <id>T1003.001</id>
+  </mitre>
+  <group>credential_access,</group>
+</rule>
+```
+
+The rule detects this method efficiently as set a high alert level to it, breaking this rule to simplify how it works:
+`<rule id="100010" level="15">` -> this line sets and ID for the rule and give it an alert level 
+`<if_group>sysmon</if_group> <field name="win.system.eventID">^10$</field>` -> This line the log type and Event ID of the process to be detected which in this case sysmon even 10 which detects a process acceess
+`<field name="win.eventdata.targetImage" type="pcre2">(?i)lsass\.exe</field>` -> the field name spacifies the process that is being accessed and compare its name if its `lsass.exe` or not, note that also type="pcre2" attribute is used to give more options to compare. The attacker could write it as LSASS.exe and it will still be detected due to the (?i) option which ignores the case senstivity used along the prec2 type 
+The rest are more information about the rule for detecting and readability like a description and the MITRE ATT&CK and the group it belongs to 
+
+For the Second rule is for detecting CreateRemoteThread Injection which is mapped as Process Injection (MITRE T1055) in the MITRE ATT&CK framework Malware uses this technique to hide from security tools. Instead of running a suspicious .exe file on disk, the malware injects its malicious code directly into the active memory of a trusted Windows process (like explorer.exe or svchost.exe). The trusted process does the dirty work, making the attack look like legitimate system activity. This rule watches event ID 8 where this event forces a compelete seperate innocent program to execute a command on its behalf to seem legimitate, it should have a high severity (12). 
+
+```xml
+<rule id="100011" level="12">
+    <if_group>sysmon</if_group>
+    <field name="win.system.eventID">^8$</field>
+    <description>Sysmon - CreateRemoteThread detected (T1055 Process Injection)</description>
+    <mitre>
+      <id>T1055</id>
+    </mitre>
+    <group>process_injection,</group>
+  </rule>
+```
+`<if_group>sysmon</if_group> <field name="win.system.eventID">^8$</field>` -> the logs source and event ID is specifies and discussed why event ID 8 is choosen specifically for this rule 
+The rest is the same functionality discussed in the previous rule 
+
+For the third rule, Registry Run Key Modification, it detects if there are any registry key changed, added, or even removed from the registery editor. Which is mapped in MITRE ATT&CK as Registry Run Keys / Startup Folder Persistence (MITRE T1547.001). This rule will monitor the sysmon event ID 13 (Registry Value Set). When an attacker gains an access to a machine, he want to keep presistent. So a they add a path to the malware in the windowns run registry key to force the PC to run the malware everytime the user logs into the machine. 
+
+```xml
+<rule id="100012" level="10">
+    <if_group>sysmon</if_group>  <field name="win.system.eventID">^13$</field> <field name="win.eventdata.targetObject" type="pcre2">(?i)\\CurrentVersion\\Run</field>
+    <description>Sysmon - Registry Run key persistence (T1547.001)</description>
+    <mitre>
+      <id>T1547.001</id>
+    </mitre>
+    <group>persistence,</group>
+  </rule>
+```
+`<rule id="100012" level="10">` -> the severity of this rule is high but lower than the prevoius rules, level is set to 10. 
+`<if_group>sysmon</if_group>  <field name="win.system.eventID">^13$</field> <field` -> selecting the source of logs as sysmon specifically for the event 13 that detects any changes in the registry editor 
+` <field name="win.eventdata.targetObject" type="pcre2">(?i)CurrentVersion.*Run</field>` -> When a registry key is modifies, the exact registry path modified is recorded in targetObject 
 
 
 
