@@ -1,4 +1,4 @@
----
+<img width="522" height="288" alt="image" src="https://github.com/user-attachments/assets/aebcee1b-53eb-45dd-ae16-485b6eff7883" />---
 layout: default
 title: "TryHackMe: Snapped Phish-ing Line Walkthrough"
 description: "Detailed solution and walkthrough for the Snapped Phish-ing Line challenge on TryHackMe."
@@ -9,20 +9,130 @@ redirect_from:
 ---
 
 
-# Snapped-Phish-ing-Line
+# Sysmon + Wazuh: Real EDR Telemetry Generation
 <img width="1903"  alt="header" src="https://github.com/user-attachments/assets/3cd4145c-8211-42ce-88f9-a5e57fbf2d84" />
+### In this lab, Sysmon, Wazuh, Wazuh agent is used to catch populater mitrea and attack techniches and set them an elert using EDR telementry to catch them easily 
 
-## An Ordinary Midsummer Day...
+## Setting Up the Wazuh manager on (ubuntu server)
 
-#### As an IT department personnel of SwiftSpend Financial, one of your responsibilities is to support your fellow employees with their technical concerns. While everything seemed ordinary and mundane, this gradually changed when several employees from various departments started reporting an unusual email they had received. Unfortunately, some had already submitted their credentials and could no longer log in.
+#### In this lab, ubuntu 22.04 is used with 4 GB and 2 cores and 50 GB 
+after making the machine in vmbox, the wazuh manager is downloaded with the command:
+```shell
+curl -sO https://packages.wazuh.com/4.7/wazuh-install.sh
+sudo bash wazuh-install.sh -a
+```
+<img width="872" height="166" alt="Screenshot 2026-05-16 221446" src="https://github.com/user-attachments/assets/a36d2dc4-fe5d-4a78-afeb-153346476e04" />
 
-### You now proceeded to investigate what is going on by:
+it should give the user and password in the end with a message "Installation finished"
+<img width="956" height="62" alt="Screenshot 2026-05-16 231425" src="https://github.com/user-attachments/assets/b2c99cfc-2501-43ca-bd3f-6a567d8b7bda" />
 
-1. Analysing the email samples provided by your colleagues.
-1. Analysing the phishing URL(s) by browsing it using Firefox.
-1. Retrieving the phishing kit used by the adversary.
-1. Using CTI-related tooling to gather more information about the adversary.
-1. Analysing the phishing kit to gather more information about the adversary.
+to check that its running, these command are typed: 
+```shell
+sudo systemctl status wazuh-manager
+sudo systemctl status wazuh-dashboard
+```
+They both must have the active (running)
+<img width="937" height="160" alt="image" src="https://github.com/user-attachments/assets/b73d4396-12e1-4f0e-94da-124aa3465d72" />
+
+Now the Wazuh dashboard could be run on any browser from the same network, run it on the host machine using  https://YOUR_UBUNTU_IP from your host browser.
+The ubuntu ip could be known using the command 
+```shell
+ip a
+```
+<img width="855" height="226" alt="image" src="https://github.com/user-attachments/assets/edf2dd3d-7bac-42c2-8308-d4fbd7a5e27e" />
+
+
+
+now veriying that the wazuh manager is running
+```shell
+sudo /var/ossec/bin/wazuh-control status
+```
+<img width="522" height="288" alt="image" src="https://github.com/user-attachments/assets/18dbfd60-fdb2-45a0-a9a7-6df130ce4cfc" />
+
+Ubuntu ip is `192.168.1.7` in this case, browsing the web browser with `https://192.168.1.7` after waiting for 3 mins for the wazuh dashboard to start would reaveal the login page 
+<img width="1856" height="936" alt="Screenshot 2026-05-16 231542" src="https://github.com/user-attachments/assets/35e98f38-df53-46fd-89a4-67ff219277b2" />
+ Using the credentials from the first wazuh installation to access the dashboard, it shows 0 total agents.
+ <img width="1893" height="920" alt="Screenshot 2026-05-16 234013" src="https://github.com/user-attachments/assets/abd52b90-cea4-4099-895d-e079de91a735" />
+ Making sure that al services are running using the command:
+ ```shell
+sudo /var/ossec/bin/wazuh-control status
+```
+<img width="855" height="226" alt="image" src="https://github.com/user-attachments/assets/913d96b8-9a89-4654-93d4-b1f2a0e57360" />
+
+Now comes the time to set the agent that would be monitored 
+
+
+### Setting up the Wazuh Agent + Sysmon (windows vm)
+
+For this lab a windows vm with 4GB, 2 cores and 50 GB of starage is used
+First step is to install sysmon, its an advanced Windows logging tool that hooks deep into the system to monitor detailed activity. Sysmon is needed because the normal windows logging are too basic and miss advanced hooking techniques, so sysmon is installed to discover the details of logs and reveal command line arguments, process tracking and memory access that would be tested through the lab. 
+
+On the windows vm, browse the following link to download sysmon: 
+https://learn.microsoft.com/en-us/sysinternals/downloads/sysmon
+
+<img width="885" height="577" alt="Screenshot 2026-05-16 185939" src="https://github.com/user-attachments/assets/6aedaa2c-30d3-42a9-8d7a-f215bf68f318" />
+Sysmon is like a massive high defination security camera, it collects everything heppening in the PC, its its turned on and left without any instruction, it will collect everything happening on the computer. That will make alot of noise to the logging. As a soc analyst, one of the best practices is to tune the signal to noise ratio, using an xml file that directs the sysmon to collect only the suspicous pattern and process and set basic alerts for it in sysmon
+This is where the The SwiftOnSecurity Config comes in
+The SwiftOnSecurity Config is downloaded through the link
+https://github.com/SwiftOnSecurity/sysmon-config
+<img width="887" height="585" alt="Screenshot 2026-05-16 190051" src="https://github.com/user-attachments/assets/1ad8d88b-a696-45a3-b7cb-f6f2cb1682e7" />
+
+The downloaded file is then placed in the same extracted sysmon file
+<img width="912" height="369" alt="Screenshot 2026-05-16 191251" src="https://github.com/user-attachments/assets/57f1ae3b-14a7-4b19-8c8d-78455588396f" />
+
+After setting the required files, sysmon is installed through the following command  
+```cmd
+cd C:\Users\<current user>\Downloads\Sysmon
+.\Sysmon64.exe -accepteula -i sysmonconfig-export.xml
+```
+<img width="879" height="373" alt="Screenshot 2026-05-16 191234" src="https://github.com/user-attachments/assets/6ba23822-c080-4ac7-bef3-89a13a4503ce" />
+
+Verifying the sysmon actually records the intendet event, the following command is run in powershell 
+```powershell
+Get-WinEvent -LogName "Microsoft-Windows-Sysmon/Operational" -MaxEvents 10 |
+  Select TimeCreated, Id, Message |
+  Format-List
+```
+where It pulls the 10 most recent logs directly from the Sysmon event database into your terminal, showing only the time, Event ID, and details.
+
+<img width="877" height="484" alt="Screenshot 2026-05-16 191404" src="https://github.com/user-attachments/assets/103732bf-d0b0-4a65-8391-42d5a031753d" />
+
+Opening the Event viewer -> Applications and Services Logs -> Microsoft -> Windows -> Sysmon -> Operational 
+<img width="793" height="588" alt="image" src="https://github.com/user-attachments/assets/62b50642-140f-4703-920a-3dc969eb3a9a" />
+Event ID 1 (process creates) and EID 3 (network connections)
+where in the command 
+
+Process Creation (Event ID 1): The Windows kernel spins up powershell.exe. Sysmon's driver catches this instantly and records the timestamp, the user account, and the exact command-line arguments used.
+
+Network Connection (Event ID 3): A split second later, powershell.exe sends out a network packet to connect to an external server. Sysmon's network monitor hooks into the network stack, catches the traffic, and logs the source/destination IPs and port
+
+The script blocking (T1059 Command and Scripting Interpreter) have to be catched as well in this lab, so the script block logging is enaled through  the command
+```powershell 
+$p = "HKLM:\SOFTWARE\Policies\Microsoft\Windows\PowerShell\ScriptBlockLogging"
+New-Item -Path $p -Force | Out-Null
+Set-ItemProperty -Path $p -Name "EnableScriptBlockLogging" -Value 1
+Set-ItemProperty -Path $p -Name "EnableScriptBlockInvocationLogging" -Value 1
+```
+Another MITRE ATT&CK framework technique must be catched is (T1059), where 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 Note: The phishing emails to be analysed are under the phish-emails directory on the Desktop. Usage of a web browser, text editor and some knowledge of the grep command will help.
 
