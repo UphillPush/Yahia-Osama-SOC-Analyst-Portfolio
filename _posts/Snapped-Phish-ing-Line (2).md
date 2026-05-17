@@ -6,14 +6,16 @@ categories: ["Home Lab", "Detection Engineering"]
 tags: [wazuh, sysmon, edr, mitre-attack, blue-team, threat-hunting]
 pin: false
 image:
-  path: https://github.com/user-attachments/assets/3cd4145c-8211-42ce-88f9-a5e57fbf2d84
+  path: https://github.com/user-attachments/assets/bd70f682-71d0-4aeb-a6da-6b816a80618d
+
   preview: false
   class: img-contain
 ---
 
 # Building a Custom EDR Pipeline: Sysmon & Wazuh
 
-![Lab Header](https://github.com/user-attachments/assets/3cd4145c-8211-42ce-88f9-a5e57fbf2d84){: .shadow .rounded }
+![Lab Header](https://github.com/user-attachments/assets/ab54b3dc-2dba-485a-ad62-558b29d89327
+){: .shadow .rounded }
 _Figure 1: EDR Telemetry Generation Lab._
 
 > **Executive Summary**
