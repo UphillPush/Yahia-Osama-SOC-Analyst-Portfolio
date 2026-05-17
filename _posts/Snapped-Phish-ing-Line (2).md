@@ -62,7 +62,7 @@ sudo /var/ossec/bin/wazuh-control status
 Now comes the time to set the agent that would be monitored 
 
 
-### Setting up the Wazuh Agent + Sysmon (windows vm)
+### Setting up Sysmon (windows vm)
 
 For this lab a windows vm with 4GB, 2 cores and 50 GB of starage is used
 First step is to install sysmon, its an advanced Windows logging tool that hooks deep into the system to monitor detailed activity. Sysmon is needed because the normal windows logging are too basic and miss advanced hooking techniques, so sysmon is installed to discover the details of logs and reveal command line arguments, process tracking and memory access that would be tested through the lab. 
@@ -113,15 +113,66 @@ New-Item -Path $p -Force | Out-Null
 Set-ItemProperty -Path $p -Name "EnableScriptBlockLogging" -Value 1
 Set-ItemProperty -Path $p -Name "EnableScriptBlockInvocationLogging" -Value 1
 ```
-Another MITRE ATT&CK framework technique must be catched is (T1059), where 
+<img width="888" height="148" alt="Screenshot 2026-05-16 192142" src="https://github.com/user-attachments/assets/29a4f305-3f63-45f1-bba8-d14142393295" />
+
+Another important logs to be collected in the process command-line auditing, where the following command enables full command-line strings in Event ID 4688. Without this command, only the process name will be seen without the arguments which means missing the -EncodedCommand flag in Powershell attacks. 
+
+```powershell
+auditpol /set /subcategory:"Process Creation" /success:enable /failure:enable
+reg add "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System\Audit" /v ProcessCreationIncludeCmdLine_Enabled /t REG_DWORD /d 1 /f
+```
+<img width="890" height="110" alt="Screenshot 2026-05-16 211026" src="https://github.com/user-attachments/assets/f8c936dd-8d31-4363-8c2f-684312e18d97" />
+
+### Setting up Wazuh Agent (windows vm)
+
+After setting the Sysmon and testing its detection and coustimizing it for the logs wanted to be moniitoring, comes the step where all the logs are forwarded to the Wazuh manager for analysis 
+
+Installing the Wazuh agent
+The wazuh agent to be installed must be the same version of the wazuh manager installed in the ubuntu server. In the ubuntu server, Wazuh 4.7.5 is installed, so downloading wazuh agent 4.7.5 through this command
+```cmd
+curl -L https://packages.wazuh.com/4.x/windows/wazuh-agent-4.7.5-1.msi -o wazuh-agent-4.7.5-1.msi   
+```
+
+now its configured with the server IP and started through the commands 
+```cmd
+powershell -Command "(Get-Content 'C:\Program Files (x86)\ossec-agent\ossec.conf') -replace '<address>0.0.0.0</address>', '<address>192.168.1.7</address>' | Set-Content 'C:\Program Files (x86)\ossec-agent\ossec.conf'"
+del "C:\Program Files (x86)\ossec-agent\client.keys" 2>nul
+net start WazuhSvc
+```
+<img width="789" height="400" alt="Screenshot 2026-05-17 001756" src="https://github.com/user-attachments/assets/d4d2a7e7-44ed-44b8-b806-9216230887df" />
+
+It shows the STATE is RUNNING, which is a right indicator that the agent is set up
+Now the agent sends normal windows logs, it has to be configured to forward sysmon logs as well. 
+
+Browsing C:\Program Files (x86)\ossec-agent\ossec.conf file and opening it as a text editor, the instructions of forwarding the sysmon logs as well is put into that file 
+```texteditor 
+<localfile>
+  <location>Microsoft-Windows-Sysmon/Operational</location>
+  <log_format>eventchannel</log_format>
+</localfile>
+
+<localfile>
+  <location>Microsoft-Windows-PowerShell/Operational</location>
+  <log_format>eventchannel</log_format>
+</localfile>
+
+<localfile>
+  <location>Security</location>
+  <log_format>eventchannel</log_format>
+</localfile>
+```
+<img width="803" height="563" alt="Screenshot 2026-05-17 002002" src="https://github.com/user-attachments/assets/c3c8ec91-a41c-494f-af6d-3d9a5ef3bc0c" />
+
+Restarting the agent again would apply the changes made 
+```cmd
+NET STOP WazuhSvc
+NET START WazuhSvc
+```
 
 
+### Adding rules to Wazuh server 
 
-
-
-
-
-
+A custom Wazuh rule is added for LSASS access 
 
 
 
