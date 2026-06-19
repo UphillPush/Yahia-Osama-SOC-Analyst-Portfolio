@@ -1,4 +1,4 @@
-<img width="1360" height="680" alt="image" src="https://github.com/user-attachments/assets/38f6a731-6634-40f5-a74a-b6b9194023cb" /><img width="473" height="170" alt="image" src="https://github.com/user-attachments/assets/117d9821-4844-4488-a576-3b82ff8cbc5f" />---
+---
 layout: default
 title: "TryHackMe: Snapped Phish-ing Line Walkthrough"
 description: "Detailed solution and walkthrough for the Snapped Phish-ing Line challenge on TryHackMe."
