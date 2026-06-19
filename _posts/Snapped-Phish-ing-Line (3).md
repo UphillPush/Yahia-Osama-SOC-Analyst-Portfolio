@@ -1,4 +1,4 @@
----
+<img width="473" height="170" alt="image" src="https://github.com/user-attachments/assets/117d9821-4844-4488-a576-3b82ff8cbc5f" />---
 layout: default
 title: "TryHackMe: Snapped Phish-ing Line Walkthrough"
 description: "Detailed solution and walkthrough for the Snapped Phish-ing Line challenge on TryHackMe."
@@ -9,22 +9,75 @@ redirect_from:
 ---
 
 
-# Snapped-Phish-ing-Line
-<img width="1903"  alt="header" src="https://github.com/user-attachments/assets/3cd4145c-8211-42ce-88f9-a5e57fbf2d84" />
+# FortiGate IPsec VPN & HA
 
-## An Ordinary Midsummer Day...
 
-#### As an IT department personnel of SwiftSpend Financial, one of your responsibilities is to support your fellow employees with their technical concerns. While everything seemed ordinary and mundane, this gradually changed when several employees from various departments started reporting an unusual email they had received. Unfortunately, some had already submitted their credentials and could no longer log in.
+## For the security part, it is divided into 3 labs
+- lab 0: installing the software and configuring staic routes 
+- Lab 1: IP sec VPN
+- lab 2: HA + IPsec 
 
+#### the two hands-on labs built from scratch: a Site-to-Site IPsec VPN, then a FortiGate High Availability cluster with seamless VPN failover. Both run free on EVE-NG, with full protocol-level explanations of every setting and why it matters — not just what to click.
 ### You now proceeded to investigate what is going on by:
 
-1. Analysing the email samples provided by your colleagues.
-1. Analysing the phishing URL(s) by browsing it using Firefox.
-1. Retrieving the phishing kit used by the adversary.
-1. Using CTI-related tooling to gather more information about the adversary.
-1. Analysing the phishing kit to gather more information about the adversary.
+Lab 0: 
+phase 1: installing the software
+for this lab, eve is used along with a fortigate images of version 7.0.2, which could be downloaded through the link: https://o6uedu-my.sharepoint.com/:u:/g/personal/202018756_o6u_edu_eg/IQC__SSmdVDUTYBEUVxpeetWAR54lUoPi3ST3ZmOzvmnpfI?e=XyFTDW
 
-Note: The phishing emails to be analysed are under the phish-emails directory on the Desktop. Usage of a web browser, text editor and some knowledge of the grep command will help.
+using the vmware, the eve vm is imported. For the fortigate images to be inported in eve, winscp application was used and the fortigate files are imported 
+
+Oprning the cli with the following commands 
+ssh to the vm
+```
+ssh root@<eve-ng-ip>   # default password: eve 
+```
+Create the image directory
+```
+mkdir -p /opt/unetlab/addons/qemu/fortinet-7.0.2
+cd /opt/unetlab/addons/qemu/fortinet-7.0.2
+```
+now using the winscp, the fortigate images are dragged and dropped in the path `/opt/unetlab/addons/qemu/fortinet-7.0.2`
+<img width="1339" height="811" alt="image" src="https://github.com/user-attachments/assets/130811a6-6c03-48e9-8ca5-b372f6881fd4" />
+Last thing is fixing the permissions 
+```
+/opt/unetlab/wrappers/unl_wrapper -a fixpermissions
+```
+now after making sure that eve connection is bridge, its powered on and got an ip, browsing this ip in the browsers opens the eve interface 
+using the credentials
+user: admin
+pass: eve
+the web interface is logged in and ready to add nodes
+Adding a fortigate router as a node is done by clicking a right-click in empty space and choosing fortigate
+<img width="861" height="323" alt="image" src="https://github.com/user-attachments/assets/1f9d101b-2cae-40f5-a48e-69918a7b02c8" />
+for this lab and fortigate version, only 1 cpu and 1 GB of RAM is needed 
+<img width="889" height="652" alt="image" src="https://github.com/user-attachments/assets/a737e765-e80f-4193-b9b0-c9ab4bfa16f2" />
+Other nodes are added and connected trough ports as the topology shows:
+<img width="418" height="390" alt="image" src="https://github.com/user-attachments/assets/62d216b0-c4e1-4ff1-8657-0a46c328ddaf" />
+
+
+For using the fortigate cli, some programs needs to be installed 
+- Eve windoes client (which is included in the attachement downloaded)
+- Putty (through this link: https://www.chiark.greenend.org.uk/~sgtatham/putty/latest.html)
+
+Now all the nodes are selected and pressed start selected for configuration of the nodes with the IPs assigned in the topology:
+For the Fortinet-Left: 
+When first entered it asks for the username and password 
+username is admin and password is blanck (just pressing enter), then it promotes the user to enter a new password
+
+after setting the new password, the hostname is changed for better identification 
+```
+config system global
+set hostname "Forti-Left"
+end
+```
+<img width="481" height="131" alt="image" src="https://github.com/user-attachments/assets/faf488f6-d828-40c3-9716-011caddd65d9" />
+for accessing the Fortinet GUI, the IP addressed assigned in the cloud management port is identenfied through the commands
+```
+get system interface physical
+```
+<img width="473" height="170" alt="image" src="https://github.com/user-attachments/assets/e21d1518-5421-4f32-99f5-16d86952c4f7" />
+which shows the IP to be 192.168.1.7, browsing this IP 
+
 
 ## Answer the questions below
 >![](https://img.shields.io/badge/Question-blue) Who is the individual who received an email attachment containing a PDF?
