@@ -1,4 +1,4 @@
-<img width="473" height="170" alt="image" src="https://github.com/user-attachments/assets/117d9821-4844-4488-a576-3b82ff8cbc5f" />---
+<img width="1360" height="680" alt="image" src="https://github.com/user-attachments/assets/38f6a731-6634-40f5-a74a-b6b9194023cb" /><img width="473" height="170" alt="image" src="https://github.com/user-attachments/assets/117d9821-4844-4488-a576-3b82ff8cbc5f" />---
 layout: default
 title: "TryHackMe: Snapped Phish-ing Line Walkthrough"
 description: "Detailed solution and walkthrough for the Snapped Phish-ing Line challenge on TryHackMe."
@@ -76,7 +76,88 @@ for accessing the Fortinet GUI, the IP addressed assigned in the cloud managemen
 get system interface physical
 ```
 <img width="473" height="170" alt="image" src="https://github.com/user-attachments/assets/e21d1518-5421-4f32-99f5-16d86952c4f7" />
-which shows the IP to be 192.168.1.7, browsing this IP 
+which shows the IP of the GUI of the fortigate router, which when browsed opens the GUI 
+the username and the password is the same set in the beging of the cli 
+after logging it it shows this interface 
+<img width="1360" height="680" alt="image" src="https://github.com/user-attachments/assets/535c8f81-0156-42eb-ba19-1da5587cc23f" />
+The interfaces IP could be set either through the GUI or the CLI, but for this lab the cli is used. 
+For setting the IP for each interface 
+in the Forti-Left router:
+```
+config system interface
+    edit port2
+        set mode static
+        set ip 172.16.10.1 255.255.255.252
+        set allowaccess ping https ssh http
+    next
+    edit port3
+        set mode static
+        set ip 10.10.10.1 255.255.255.0
+        set allowaccess ping https ssh http
+    next
+end
+```
+<img width="479" height="367" alt="image" src="https://github.com/user-attachments/assets/58b8f2a0-b60d-43ab-82e4-af3f45e53e7d" />
+
+For the Forti-Right: 
+the same steps in the Forti-Left is applied beside the difference in the IPs on each interface 
+```
+config system global
+  set hostname "Forti-Left"
+end
+config system interface
+    edit port2
+        set mode static
+        set ip 172.16.10.2 255.255.255.252
+        set allowaccess ping https ssh http
+    next
+    edit port3
+        set mode static
+        set ip 20.20.20.1 255.255.255.0
+        set allowaccess ping https ssh http
+    next
+end
+```
+<img width="705" height="474" alt="image" src="https://github.com/user-attachments/assets/062d3c8a-4b20-42e2-9067-a5c7e0e047d1" />
+
+now setting the VPCs IP, 
+for the left VPC 
+```
+ip 10.10.10.2 24 10.10.10.1
+```
+for the right VPC 
+```
+ip 20.20.20.2 24 20.20.20.1
+```
+
+now each VPC can see its directly connected router, but they can't see each other. To achieve this a static route and firewall policy have to be set 
+Accessing the left router's GUI, in the Network -> static route a new rule is created as shown containing the destination network which is 20.20.20.0/24 and the gateway which is the interface address of the router connected to that network and the interface that the traffic will pass through, which is port2
+<img width="921" height="554" alt="image" src="https://github.com/user-attachments/assets/4beae9e7-e869-4d22-8403-0b55503d62a6" />
+Now the router can see the other network, but forigate policy is denying any communication to it. To resolve this a new policies have to be set. In `Policy & Objects` -> `Firewall Policy` 2 new policies are created, one to  allow the trafic inbount and another outboand.
+the first one is to allow traffic incoming from port 2 to the port 3 
+<img width="918" height="682" alt="image" src="https://github.com/user-attachments/assets/e956f443-b46d-4699-8b39-1dc703c7f3ae" />
+
+Second is doing the opposite 
+<img width="910" height="681" alt="image" src="https://github.com/user-attachments/assets/85b1c112-b218-4802-99b9-e04b6a9fcda6" />
+
+Doing the same steps in Fortigate-Right:
+the static route:
+<img width="913" height="553" alt="image" src="https://github.com/user-attachments/assets/a0b5ff28-f61c-4e2f-95ea-f80bd7b01d74" />
+
+the policies:
+<img width="911" height="677" alt="image" src="https://github.com/user-attachments/assets/4ff22b5a-0e13-4d6a-9e98-f54a6f456f30" />
+
+<img width="899" height="677" alt="image" src="https://github.com/user-attachments/assets/d522fc81-9c06-41c7-b08a-3a34bb112168" />
+
+Finally this could be tested by pinging the right VPC from the left VPC as shown 
+<img width="624" height="190" alt="image" src="https://github.com/user-attachments/assets/d4ce746a-525d-4efb-8809-e768577dee81" />
+
+and the opposite is working too 
+<img width="607" height="184" alt="image" src="https://github.com/user-attachments/assets/8187f6ea-e952-4c8c-96a0-6a6d9cbe246d" />
+
+
+
+
 
 
 ## Answer the questions below
