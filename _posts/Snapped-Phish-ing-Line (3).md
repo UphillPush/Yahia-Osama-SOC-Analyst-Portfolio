@@ -192,6 +192,88 @@ Auto-negotiate | enabled | enabled
 
 <img width="1366" height="2464" alt="image" src="https://github.com/user-attachments/assets/bd13bb72-34b4-422c-aa3c-909ffb7d8ced" />
 
+Now two policied have to be created on each FortiGate, one for each direction of the traffic across the tunnel 
+Policy & Objects -> Firewall Policy -> create new 
+Fortinet1 — Policy 1 (LAN → VPN)
+Policy & Objects → Firewall Policy → Create New
+
+Incoming Interface:  port3
+Outgoing Interface:  ToRemote  (VPN tunnel interface)
+Source:               10.10.10.0/24
+Destination:          20.20.20.0/24
+Service:              ALL
+Action:               ACCEPT
+NAT:                  OFF
+
+Fortinet1 — Policy 2 (VPN → LAN)
+Incoming Interface:  ToRemote
+Outgoing Interface:  port3
+Source:               20.20.20.0/24
+Destination:          10.10.10.0/24
+Service:              ALL
+Action:               ACCEPT
+NAT:                  OFF
+
+mirrored plocies are repeated in Fortinet 2 swapping the source and destination)
+<img width="1357" height="361" alt="image" src="https://github.com/user-attachments/assets/44e470d4-f7b5-48f8-9535-2208892c9239" />
+<img width="1356" height="373" alt="image" src="https://github.com/user-attachments/assets/027d99e8-d1b6-4881-aafe-a561416edd7b" />
+
+
+Then the static routes for vpn is added 
+
+# On Fortinet1:
+Network → Static Routes → add route: Destination 20.20.20.0/24 via VPN tunnel interface (Device: ToRemote)
+<img width="1354" height="252" alt="image" src="https://github.com/user-attachments/assets/dccc54a0-5aa1-4181-a277-16797caeea78" />
+# On Fortinet2:
+Network → Static Routes → add route: Destination 10.10.10.0/24 via VPN tunnel interface (Device: ToRemote)
+
+<img width="1358" height="250" alt="image" src="https://github.com/user-attachments/assets/77db7726-ee6a-4f4a-948d-eaa5c0917332" />
+
+
+GUI Verification
+VPN → IPsec Tunnels → Status should show GREEN (up)
+<img width="1352" height="276" alt="image" src="https://github.com/user-attachments/assets/70e1ac40-69ee-4871-8e3d-e71589f33208" />
+
+CLI Verification Commands
+FortiGate CLI
+# Check IKE Phase 1 status
+get vpn ike gateway ToRemote
+
+# Check IPsec Phase 2 status
+get vpn ipsec tunnel name ToRemote
+
+# Live debug (run BEFORE initiating ping — watch the real-time IKE exchange)
+diagnose debug application ike -1
+diagnose debug enable
+
+# Trigger the tunnel with a ping from Win3 to Win4:
+# ping 20.20.20.2  (run this from Win3)
+
+# Stop debug once you've seen the exchange:
+diagnose debug disable
+diagnose debug reset
+
+For the Real Remote-Worker Scenario: Remote Access VPN
+In the Site-to-Site lab above, Win3 and Win4 are positioned behind their own FortiGate, on networks that are deliberately built to be reachable from each other — that is the entire point of a branch-office tunnel. If the VPN and the firewall policies were removed, Win4 still could not be reached by Win3 because no route at all is provided between 10.10.10.0/24 and 20.20.20.0/24 across the internet. However, the moment the tunnel and a route are established, a permanent and symmetric path is created, exactly like a leased line between two offices. While this is considered correct for Site-to-Site, a remote worker is not modeled by this approach at all. A remote worker's laptop is not configured as a second office with its own subnet and its own firewall; rather, it is a single, unmanaged device on an unknown network (home WiFi, a coffee shop, mobile hotspot) that should be granted zero access to the corporate LAN until a VPN connection is authenticated. Exactly that architecture is built in this section.
+
+<img width="820" height="427" alt="image" src="https://github.com/user-attachments/assets/496844be-d3ef-4d29-bbfc-9b361e479b46" />
+
+To make this remote user connected the the corperate network, Fortinet-Left has to be configured as a Dialup server 
+VPN -> IPsec Wizard -> custom -> named as "RemoteAccess"
+Paramater | Value 
+Remote Gateway | Dailup User 
+Interface | port2
+IKE version | 2 
+Authentication mode | Pre-shared
+Pre-shared key | RemoteWorker@2026!
+Mode config | Enabled 
+client address range | 10.10.10.100 - 10.10.10.110
+Encryption / Authentication / DH | AES128/SHA256/Group 14 
+Dead Peer Detection | On Idle 
+NAT Traversal | Enabled 
+
+
+
 
 
 
