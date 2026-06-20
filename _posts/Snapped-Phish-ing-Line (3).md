@@ -155,6 +155,42 @@ Finally this could be tested by pinging the right VPC from the left VPC as shown
 and the opposite is working too 
 <img width="607" height="184" alt="image" src="https://github.com/user-attachments/assets/8187f6ea-e952-4c8c-96a0-6a6d9cbe246d" />
 
+LAB 02: IPsec VPN
+For setting the IKE phase 1 through the fortigate GUI, 
+VPN -> IPsec Wizard -> Custom -> a name is give (eg. "ToRemote")
+<img width="1010" height="285" alt="image" src="https://github.com/user-attachments/assets/ac6da439-8b57-4d74-a8d7-7624429a753e" />
+set the parameters
+Paramater | Forti-Left | Forti-Right 
+IP version | static IP | static IP 
+Remote Gateway | 172.16.10.2 | 172.16.10.1
+Interface | port2 | port2
+IKE version | 1 | 1
+Mode | main | main 
+Authentication Method | pre-shared key | pre-shared key 
+Pre-shared key | FortiGate@123! | FortiGate@123! 
+Encryption | DES | DES
+Authentication | SHA256 | SHA256
+DH Group | 14 | 14
+Dead Peer Detection | On Demand | On Demand
+Nat Traversal | Enable | Enable 
+
+This phase 1 configurations maps to the IKE phase 1 three-step process 
+- Step 1: Negotiation, where the Encryption, Authentication, DH Group. life time is selected which are the SA proposal exchanged 
+- step 2: DH key exchange
+- step 3: Authentication 
+
+For the Phase 2 selectors: 
+Paramater | Forti-Left | Forti-Right 
+Local subnet | 10.10.10.0/24 | 20.20.20.0/24
+Remote subnet | 20.20.20.0/24 | 10.10.10.0/24
+Protocol | ESP | ESP
+Encryption | DES | DES 
+Authentication | SHA256 | SHA256
+Enable PFS | checked | checked 
+Lifetime | 43200 | 43200
+Auto-negotiate | enabled | enabled 
+
+<img width="1366" height="2464" alt="image" src="https://github.com/user-attachments/assets/bd13bb72-34b4-422c-aa3c-909ffb7d8ced" />
 
 
 
