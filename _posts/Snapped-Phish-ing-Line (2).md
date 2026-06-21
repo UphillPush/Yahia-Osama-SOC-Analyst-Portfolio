@@ -1,15 +1,12 @@
 ---
 layout: post
-title: "BARQ Systems Network and Cybersecurity Training"
-description: "Part 1 of the BARQ Systems training series. This lab focuses on enterprise routing and network security using Junos OSPF and firewall filters. Part 2 will continue the series with FortiGate implementations."
-date: 2026-05-24 00:00:00 +0200
+title: "Comprehensive Network Security: Junos OSPF, ACLs, & FortiGate IPsec VPNs"
+description: "A complete end-to-end training walkthrough bridging enterprise routing (Junos OSPF/ACLs) with perimeter security (FortiGate Site-to-Site & Remote Access VPNs)."
+date: 2026-06-21 00:00:00 +0200
 categories: ["Home Lab", "Network Security"]
-tags: [junos, pnet-lab, ospf, acl, firewall, routing, blue-team]
+tags: [junos, fortigate, pnet-lab, eve-ng, ospf, acl, ipsec, vpn, blue-team]
 pin: false
-image:
-  path: https://github.com/user-attachments/assets/a05f0b00-19e8-4dd9-aa7b-b838c002a21b
-  preview: false
-  class: img-contain
+image: https://github.com/user-attachments/assets/130811a6-6c03-48e9-8ca5-b372f6881fd4
 ---
 
 # BARQ Systems Network and Cybersecurity Training Labs
