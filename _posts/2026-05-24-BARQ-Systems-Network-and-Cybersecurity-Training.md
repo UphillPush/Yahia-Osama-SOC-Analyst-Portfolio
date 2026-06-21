@@ -6,9 +6,14 @@ date: 2026-06-21 00:00:00 +0200
 categories: ["Network Security", "Lab Walkthrough", "SOC Training"]
 tags: [junos, fortigate, eve-ng, pnet-lab, ospf, ipsec, acl, vpn, incident-response, blue-team, network-forensics]
 pin: true
+image: https://github.com/user-attachments/assets/130811a6-6c03-48e9-8ca5-b372f6881fd4
 ---
 
 # Enterprise Network Security Architecture: BARQ Systems Lab Training
+
+> **Executive Summary**
+> Effective SOC triage requires a deep understanding of both how traffic routes through an internal network and how it crosses encrypted perimeters. This lab covers two disciplines: enterprise backbone design using Junos OSPF and stateless ACL filters, and perimeter security using FortiGate IPsec VPN tunnels. All labs were built on BARQ systems infrastructure.
+{: .prompt-info }
 
 ## Overview & Learning Objectives
 
@@ -72,7 +77,27 @@ http://<PNETLAB_IP>
 
 ---
 
-#### 1.2 Importing the Junos vMX Image
+#### 1.3 WinSCP File Transfer for vMX Image
+
+Once the VMDK is extracted, you'll transfer it to PNET Lab via WinSCP (a secure file transfer client).
+
+![WinSCP Login](https://github.com/user-attachments/assets/a13c9f40-45cb-497e-a512-f91895d65f1b){: .shadow .rounded }
+
+**Connection Details in WinSCP:**
+- **Hostname:** `<PNETLAB_IP>`
+- **Username:** `root`
+- **Password:** `pnet`
+- **Protocol:** SFTP
+- **Destination:** `/opt/unetlab/addons/qemu/`
+
+---
+
+#### 1.2 Junos vMX Image Extraction & Conversion
+
+The vMX image comes as an OVA file (virtual appliance). We need to extract the VMDK disk and convert it to `qcow2` format for PNET Lab compatibility.
+
+> **Warning:** If you skip the QCOW2 conversion step or get permissions wrong, the vMX nodes will fail to boot with cryptic "qemu" errors. Always run `/opt/unetlab/wrappers/unl_wrapper -a fixpermissions` after transferring files.
+{: .prompt-warning }
 
 The vMX image comes as an OVA file (virtual appliance). We need to extract the VMDK disk and convert it to `qcow2` format for PNET Lab compatibility.
 
@@ -152,6 +177,14 @@ Now we deploy the actual routing nodes. The topology represents a simplified ent
     VPC-Left (10.20.20.0/24)
 ```
 
+**Adding Nodes in PNET Lab:**
+
+![Adding vMX Node](https://github.com/user-attachments/assets/1af94c2e-22c1-4f73-874d-090131787fab){: .shadow .rounded }
+
+![Node Settings](https://github.com/user-attachments/assets/964a77dd-472e-432e-80c1-d23a47530aed){: .shadow .rounded }
+
+![Topology Overview](https://github.com/user-attachments/assets/93bf26b3-33e6-49b4-bff8-662e6e0ac03d){: .shadow .rounded }
+
 **Interface Assignment Plan:**
 
 | Router | Interface | Subnet | Purpose |
@@ -213,6 +246,8 @@ commit and-quit
 - **MTU setting:** Junos defaults to 1500 bytes; keep consistent across all interfaces to avoid fragmentation issues
 - **Port numbering:** `ge-0/0/0` = Gigabit Ethernet, slot 0, PIC 0, port 0
 
+![R1 Interfaces Configuration](https://github.com/user-attachments/assets/e1da15ec-0a66-45d9-b316-9e639fa2a9f6){: .shadow .rounded }
+
 ---
 
 #### 2.2 Router 2 (R2) - Area Border Router
@@ -247,6 +282,8 @@ set interfaces ge-0/0/1 unit 0 family inet mtu 1500
 commit and-quit
 ```
 
+![R2 Interfaces Configuration](https://github.com/user-attachments/assets/a3e8121e-99dc-4dc5-893e-59af74290e56){: .shadow .rounded }
+
 ---
 
 #### 2.3 Router 3 (R3) - Branch Router
@@ -279,7 +316,7 @@ set interfaces ge-0/0/2 unit 0 family inet mtu 1500
 commit and-quit
 ```
 
----
+![R3 Interfaces Configuration](https://github.com/user-attachments/assets/7ad87701-c94f-4661-bcd5-3f599f090ce9){: .shadow .rounded }
 
 ### Phase 3: OSPF Implementation & Route Propagation
 
@@ -378,6 +415,9 @@ show ospf neighbor
 # Address         Interface           State ID              Pri Dead
 # 10.0.12.2       ge-0/0/0.0         Full 2.2.2.2          100 35
 ```
+
+> **Tip:** The "Full" state means the router has synchronized its OSPF database with the neighbor. If it stays in "Exstart" or "Exchange" for more than 10 seconds, something is wrong.
+{: .prompt-tip }
 
 **If neighbors don't form, diagnose with:**
 
@@ -484,6 +524,14 @@ show firewall filter BLOCK-HOST
 show log messages | grep "BLOCK-HOST"
 ```
 
+**Test Results:**
+
+![Ping Fails - Host Blocked](https://github.com/user-attachments/assets/823fd8d4-216f-4304-9b45-cc39e05bd961){: .shadow .rounded }
+
+![R1 Block Counters Increment](https://github.com/user-attachments/assets/04cccf51-ffa9-4b0c-baf3-7d51dec33ad7){: .shadow .rounded }
+
+![Connection Restored After Filter Removal](https://github.com/user-attachments/assets/d522b1e3-ade4-4be6-93ed-dab53d4e08d4){: .shadow .rounded }
+
 ---
 
 #### 4.3 Scenario B: Strict Web-Only Policy Enforcement
@@ -548,6 +596,14 @@ show firewall filter WEB-ONLY
 # Output shows DEFAULT-DENY counter incremented
 ```
 
+**Test Results:**
+
+![Web-Only Policy Testing](https://github.com/user-attachments/assets/21b9bcad-3894-4092-b0c8-71747ec40037){: .shadow .rounded }
+
+![Firewall Filter Output](https://github.com/user-attachments/assets/04a5ca2e-27b9-4a9c-bcb4-81f2cbdfd64b){: .shadow .rounded }
+
+![Firewall Drop Logs](https://github.com/user-attachments/assets/d7998cf5-1b0c-4761-8d21-0a408a5f2343){: .shadow .rounded }
+
 **Why this matters for SOC:** If you notice SSH traffic from your corporate LAN to an external IP, either the filter failed or someone reconfigured the router. This becomes an immediate investigation trigger.
 
 ---
@@ -589,6 +645,14 @@ ping 8.8.4.4
 # View counters
 show firewall filter BLOCK-DEST-IP
 ```
+
+**Test Results:**
+
+![Malicious Destination Blocked](https://github.com/user-attachments/assets/8cbdd5ed-a818-401a-bf37-d3b1b35315b9){: .shadow .rounded }
+
+![Benign Destination Succeeds](https://github.com/user-attachments/assets/39c25265-7a65-40be-ac54-1ebae0ccec70){: .shadow .rounded }
+
+![Firewall Filter Overview](https://github.com/user-attachments/assets/a91d3ad6-8ff3-447c-9476-283152ba9b4f){: .shadow .rounded }
 
 ---
 
@@ -694,6 +758,16 @@ We're simulating two branch offices separated by an untrusted WAN (the internet)
 | Forti-Right | port3 (LAN) | 20.20.20.1/24 | Branch B internal |
 | Simulated Internet | port1 | 172.16.15.1/30 | Router between WAN IPs |
 
+**Deployment Process:**
+
+![WinSCP File Transfer to EVE-NG](https://github.com/user-attachments/assets/130811a6-6c03-48e9-8ca5-b372f6881fd4){: .shadow .rounded }
+
+![Adding FortiGate Node in EVE-NG](https://github.com/user-attachments/assets/1f9d101b-2cae-40f5-a48e-69918a7b02c8){: .shadow .rounded }
+
+![Node Resource Configuration](https://github.com/user-attachments/assets/a737e765-e80f-4193-b9b0-c9ab4bfa16f2){: .shadow .rounded }
+
+![Complete EVE-NG Lab Topology](https://github.com/user-attachments/assets/62d216b0-c4e1-4ff1-8d21-0a408a5f2343){: .shadow .rounded }
+
 ---
 
 ### Phase 2: Base FortiGate Configuration
@@ -797,7 +871,22 @@ end
 
 **Mirror on Forti-Right** (with swapped IP subnets).
 
----
+> **Note:** The FortiGate GUI provides a visual interface for all these configurations. You can access it at `https://<FORTI_IP>` with default credentials `admin`/blank password.
+{: .prompt-tip }
+
+![FortiOS Management Dashboard](https://github.com/user-attachments/assets/535c8f81-0156-42eb-ba19-1da5587cc23f){: .shadow .rounded }
+
+![Forti-Left Interface Configuration](https://github.com/user-attachments/assets/58b8f2a0-b60d-43ab-82e4-af3f45e53e7d){: .shadow .rounded }
+
+![Left Static Route Configuration](https://github.com/user-attachments/assets/4beae9e7-e869-4d22-8403-0b55503d62a6){: .shadow .rounded }
+
+![Left Outbound Firewall Policy](https://github.com/user-attachments/assets/e956f443-b46d-4699-8b39-1dc703c7f3ae){: .shadow .rounded }
+
+![Forti-Right Interface Configuration](https://github.com/user-attachments/assets/062d3c8a-4b20-42e2-9067-a5c7e0e047d1){: .shadow .rounded }
+
+![Right Outbound Firewall Policy](https://github.com/user-attachments/assets/4ff22b5a-0e13-4d6a-9e98-f54a6f456f30){: .shadow .rounded }
+
+![Successful Cleartext Ping Test](https://github.com/user-attachments/assets/d4ce746a-525d-4efb-8809-e768577dee81){: .shadow .rounded }
 
 #### 2.3 Verify Cleartext Connectivity
 
@@ -851,6 +940,14 @@ Two phases:
 #### 3.2 FortiOS IPsec Wizard
 
 FortiOS has a simplified wizard for VPN setup. We'll use it, then explain what it creates.
+
+![IPsec Wizard Interface](https://github.com/user-attachments/assets/ac6da439-8b57-4d74-a8d7-7624429a753e){: .shadow .rounded }
+
+> **Cryptographic Architecture:**
+> The tunnel was built using standard IKE Main Mode.
+> * **Phase 1 (Negotiation):** Validates identity via the Pre-Shared Key (`FortiGate@123!`) and exchanges SA proposals (DES Encryption, SHA256 Authentication, DH Group 14).
+> * **Phase 2 (ESP):** Defines the exact local (`10.10.10.0/24`) and remote (`20.20.20.0/24`) subnets authorized to traverse the payload.
+{: .prompt-info }
 
 **On Forti-Left:**
 
@@ -916,6 +1013,8 @@ config vpn ipsec phase2-interface
     next
 end
 ```
+
+![Phase 1 & Phase 2 Configuration Details](https://github.com/user-attachments/assets/bd13bb72-34b4-422c-aa3c-909ffb7d8ced){: .shadow .rounded }
 
 ---
 
@@ -1011,6 +1110,16 @@ config router static
 end
 ```
 
+**Policy & Routing Visualization:**
+
+![VPN Policy 1 - LAN to VPN Tunnel](https://github.com/user-attachments/assets/44e470d4-f7b5-48f8-9535-2208892c9239){: .shadow .rounded }
+
+![VPN Policy 2 - Return Traffic](https://github.com/user-attachments/assets/027d99e8-d1b6-4881-aafe-a561416edd7b){: .shadow .rounded }
+
+![Left VPN Route Configuration](https://github.com/user-attachments/assets/dccc54a0-5aa1-4181-a277-16797caeea78){: .shadow .rounded }
+
+![Right VPN Route Configuration](https://github.com/user-attachments/assets/77db7726-ee6a-4f4a-948d-eaa5c0917332){: .shadow .rounded }
+
 ---
 
 #### 3.5 Verify IPsec Tunnel Establishment
@@ -1023,6 +1132,10 @@ diagnose vpn tunnel list
 # name=site-to-site-right state=up
 # ipaddr=172.16.20.1 id=20.20.20.0/24
 ```
+
+Upon initiating traffic, the IPsec tunnel successfully negotiates, turning GREEN in the management dashboard.
+
+![IPsec Tunnel Established (Green Status)](https://github.com/user-attachments/assets/70e1ac40-69ee-4871-8e3d-e71589f33208){: .shadow .rounded }
 
 **If tunnel is DOWN, diagnose:**
 
@@ -1090,15 +1203,40 @@ Site-to-Site VPNs assume both ends are trusted branch offices with static IPs. B
 - Are on untrusted networks
 - Require per-user authentication, not pre-shared keys
 
+> **Security Warning:** In production, NEVER use:
+> - Default FortiGate credentials (admin/blank)
+> - Weak pre-shared keys like "FortiGate@123!"
+> - Self-signed certificates without OCSP stapling
+> - Unencrypted management access
+> 
+> Always enable:
+> - 2FA for VPN user accounts
+> - Certificate-based authentication (X.509)
+> - DPD (Dead Peer Detection) for automatic tunnel recovery
+> - Firewall policies limiting VPN user access (zero-trust principle)
+{: .prompt-warning }
+
 **Remote Access VPN** uses a different model:
 - Central VPN gateway (our Forti-Left)
 - FortiClient software on remote endpoints
 - User-based authentication (username/password or certificate)
 - Dynamic IP assignment from a DHCP pool
 
+![Remote Access VPN Topology](https://github.com/user-attachments/assets/496844be-d3ef-4d29-bbfc-9b361e479b46){: .shadow .rounded }
+
 ---
 
 #### 4.2 FortiGate Remote Access Configuration
+
+`Forti-Left` was reconfigured using the **Remote Access** wizard. A dedicated user group was created for authenticated workers, and a specific DHCP scope was allocated to dynamically assign internal IPs to authorized remote endpoints.
+
+![Remote Access Configuration Wizard](https://github.com/user-attachments/assets/8be1021c-3e1a-4f7e-a72f-104737a04960){: .shadow .rounded }
+
+![Dialup Authentication Settings](https://github.com/user-attachments/assets/0bd2dd05-ff94-4078-aa14-b73e4338e9c4){: .shadow .rounded }
+
+![Dialup IP Pool Allocation](https://github.com/user-attachments/assets/8d3d4230-b830-45f0-8c80-c7ead68ae1ac){: .shadow .rounded }
+
+![Dialup Configuration Complete](https://github.com/user-attachments/assets/2acd922e-3f31-42be-8140-368606a5aa7d){: .shadow .rounded }
 
 **On Forti-Left:**
 
@@ -1195,6 +1333,14 @@ FortiClient is the VPN client software that remote workers install.
    - **Compression:** Enable (saves bandwidth)
    - **Anti-Virus Integration:** Enable (if AV is installed)
 
+**FortiClient Installation & Configuration:**
+
+![FortiClient VPN Setup Step 1](https://github.com/user-attachments/assets/cc3e862f-1079-4c85-ab0d-0232e0e05077){: .shadow .rounded }
+
+![FortiClient VPN Setup Step 2](https://github.com/user-attachments/assets/7c52b35d-cbf8-42fb-93a6-18545d01d348){: .shadow .rounded }
+
+![FortiClient VPN Setup Step 3](https://github.com/user-attachments/assets/127afb18-18a9-4fc1-8a96-6b9b567cd3c1){: .shadow .rounded }
+
 ---
 
 #### 4.4 Tunnel Establishment & Verification
@@ -1246,6 +1392,16 @@ mstsc 10.10.10.50
 # Verify traffic is encrypted
 # (Can't sniff cleartext on the wire)
 ```
+
+**Test Results:**
+
+![FortiClient VPN Login](https://github.com/user-attachments/assets/b9635958-a0d9-4d1e-85bd-e46392ccdf5b){: .shadow .rounded }
+
+![Remote VPN Tunnel Established](https://github.com/user-attachments/assets/e0e9f88e-759b-4477-bcb5-8dc981beba59){: .shadow .rounded }
+
+![Remote Connectivity Test - Ping Success](https://github.com/user-attachments/assets/d3023919-41a7-434d-9947-0305c5819a3c){: .shadow .rounded }
+
+Upon submitting the authorized user credentials, the tunnel authenticated successfully. The remote machine was dynamically assigned an internal IP address and granted secure, encrypted access to the localized corporate assets.
 
 **If connectivity fails, diagnose:**
 
