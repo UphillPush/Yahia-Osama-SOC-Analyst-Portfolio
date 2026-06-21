@@ -1,318 +1,1327 @@
 ---
 layout: post
-title: "Comprehensive Network Security: Junos OSPF, ACLs, & FortiGate IPsec VPNs"
-description: "A complete end-to-end training walkthrough bridging enterprise routing (Junos OSPF/ACLs) with perimeter security (FortiGate Site-to-Site & Remote Access VPNs)."
-date: 2026-05-24 00:00:00 +0200
-categories: ["Home Lab", "Network Security"]
-tags: [junos, fortigate, pnet-lab, eve-ng, ospf, acl, ipsec, vpn, blue-team]
-pin: false
-image: https://github.com/user-attachments/assets/130811a6-6c03-48e9-8ca5-b372f6881fd4
+title: "Enterprise Network Security Architecture: BARQ Systems Hands-On Lab"
+description: "Deep-dive technical guide covering multi-area OSPF routing, stateless firewall ACLs for incident response, and Site-to-Site + Remote Access IPsec VPN implementations. Built for SOC analyst visibility into traffic flows, encryption, and perimeter defense mechanisms."
+date: 2026-06-21 00:00:00 +0200
+categories: ["Network Security", "Lab Walkthrough", "SOC Training"]
+tags: [junos, fortigate, eve-ng, pnet-lab, ospf, ipsec, acl, vpn, incident-response, blue-team, network-forensics]
+pin: true
 ---
 
-# Enterprise Routing and Encrypted Transport Architectures
+# Enterprise Network Security Architecture: BARQ Systems Lab Training
 
-> **Executive Summary**
-> Effective SOC triage requires a deep understanding of both how traffic routes through an internal network and how it crosses encrypted perimeters. This massive training lab is divided into two primary disciplines:
-> 
-> **Part 1:** Establishing the routing backbone using Junos vMX routers on PNET Lab. This covers OSPF dynamic routing and stateless Access Control List (ACL) firewall filters for incident containment.
-> **Part 2:** Securing the perimeter using FortiGate appliances on EVE-NG. This includes building a Site-to-Site IPsec VPN and a Remote Access (Dialup) VPN from scratch, with full protocol-level explanations.
-{: .prompt-info }
+## Overview & Learning Objectives
+
+As a SOC analyst, understanding traffic flow is **non-negotiable**. You cannot effectively investigate network-based threats if you don't know:
+- How packets route between subnets
+- Where firewall controls can be applied for containment
+- What encryption mechanisms protect data in transit
+- How to trace a compromise across multiple network segments
+
+This lab—built on BARQ systems infrastructure using **Junos vMX**, **FortiGate 7.0.2**, **EVE-NG**, and **PNET Lab**—walks through a complete enterprise network topology from Layer 3 routing design through perimeter VPN encryption.
+
+**By the end, you will understand:**
+1. ✓ How to design and troubleshoot multi-area OSPF networks
+2. ✓ How to deploy stateless firewall filters for immediate threat containment
+3. ✓ How to build, verify, and debug encrypted IPsec tunnels
+4. ✓ How to reason about network indicators during incident triage
 
 ---
 
-## PART 1: Enterprise Routing & Incident Containment (Junos)
+## PART 1: Enterprise Backbone Design & Dynamic Routing
 
-### Phase 1: Virtualization and PNET Lab Initialization
-To replicate the internal routing network, a virtualized topology was constructed utilizing PNET Lab deployed on VMware Workstation. 
+### The Problem We're Solving
 
-The hypervisor image (`pnet lab.ovf`) was imported with the following specifications to support the routing engines:
-* **RAM:** 4 GB
-* **CPUs:** 4
-* **Network Adapter 1:** Bridged
-* **Network Adapter 2:** Host-only
-* **Storage:** 50 GB Disk
+In a real SOC context, when you see a suspicious outbound connection to `8.8.8.8` from host `192.168.10.5`, you need to answer three questions *immediately*:
 
-Upon booting, the PNET Lab console prompts for the default credentials (`root` / `pnet`). The VM acquires a local IP, which is then browsed (`http://[PNETLAB_IP]`) to access the management GUI.
+1. **Which border router handles this traffic?** (Routing knowledge)
+2. **What firewall rules are in place?** (Access control knowledge)
+3. **Where can I block this at scale?** (Incident response capability)
 
-Next, the Junos vMX image (`vMX.ova`) must be imported. 7-Zip was utilized to extract the internal `vMX-disk1.vmdk` file. Using WinSCP, this disk file was securely transferred into the PNET Lab file system at `/opt/unetlab/addons/qemu/`. 
+Static routes don't scale. We use **OSPF** to dynamically discover routes and **Junos firewall filters** to enforce policy at the network edge.
 
-![WinSCP Login](https://github.com/user-attachments/assets/a13c9f40-45cb-497e-a512-f91895d65f1b){: .shadow .rounded }
+---
 
-A new command-line session was opened via SSH to convert the disk into the `qcow2` format required by the hypervisor, followed by a permissions repair:
+### Phase 1: Lab Infrastructure Setup
+
+#### 1.1 PNET Lab Hypervisor Configuration
+
+PNET Lab is a lightweight, web-based network simulation platform deployed on **VMware Workstation**. Think of it as a self-contained lab orchestration engine.
+
+**VM Specification:**
+- **RAM:** 4 GB (routing engines are memory-hungry)
+- **CPUs:** 4 cores
+- **Storage:** 50 GB disk (qcow2 images are large)
+- **Network Adapters:** 
+  - Adapter 1 (Bridged) → allows external access to the GUI
+  - Adapter 2 (Host-only) → isolates the lab from your network
+
+**Initial Boot & Access:**
 
 ```bash
-ssh root@[PNETLAB_IP]
+# Console login (after OVF import)
+Username: root
+Password: pnet
 
-# Convert the VMDK to QCOW2 (PNET Lab format)
+# Acquire IP address (DHCP via Adapter 1)
+ifconfig eth0
+
+# Access the web interface
+http://<PNETLAB_IP>
+```
+
+---
+
+#### 1.2 Importing the Junos vMX Image
+
+The vMX image comes as an OVA file (virtual appliance). We need to extract the VMDK disk and convert it to `qcow2` format for PNET Lab compatibility.
+
+**Step 1: Extract the vMX disk**
+
+```bash
+# Using 7-Zip on Windows
+7z x vMX.ova
+
+# Result: vMX-disk1.vmdk is extracted
+```
+
+**Step 2: Transfer to PNET Lab via SCP**
+
+```bash
+# From your Windows machine, use WinSCP
+# Source: C:\path\to\vMX-disk1.vmdk
+# Destination: /opt/unetlab/addons/qemu/
+# Username: root
+# Password: pnet
+```
+
+**Step 3: Convert VMDK → QCOW2 & Fix Permissions**
+
+Once the file is uploaded, SSH into PNET Lab and convert the disk format:
+
+```bash
+ssh root@<PNETLAB_IP>
+
+# Navigate to the qemu directory
+cd /opt/unetlab/addons/qemu/
+
+# Convert disk format (this takes ~5-10 minutes)
 qemu-img convert -f vmdk junos-vmx.vmdk -O qcow2 hda.qcow2
 
-# Fix hypervisor permissions
+# Fix hypervisor file permissions (CRITICAL)
 /opt/unetlab/wrappers/unl_wrapper -a fixpermissions
 ```
-{: .nolineno }
 
-Inside PNET Lab, three vMX nodes were deployed. Each was allocated 2048 MB of RAM, 2 CPUs, and 4 Ethernet interfaces. Virtual PCs (VPCs) and a management cloud node were then interconnected to form the baseline topology:
-
-![Adding vMX Node](https://github.com/user-attachments/assets/1af94c2e-22c1-4f73-874d-090131787fab){: .shadow .rounded }
-![Node Settings](https://github.com/user-attachments/assets/964a77dd-472e-432e-80c1-d23a47530aed){: .shadow .rounded }
-![Topology](https://github.com/user-attachments/assets/93bf26b3-33e6-49b4-bff8-662e6e0ac03d){: .shadow .rounded }
+**Why this matters:** If permissions are wrong, the qemu hypervisor can't read the disk image and the node won't boot.
 
 ---
 
-### Phase 2: Router Configuration & OSPF Implementation
+#### 1.3 Building the Topology in PNET Lab
 
-Baseline configurations were applied to all three routing instances (R1, R2, and R3). This included setting root authentication, enabling SSH, and assigning interface IPv4 addresses.
+Now we deploy the actual routing nodes. The topology represents a simplified enterprise network:
+- **R1 (Area 0):** Backbone router with internal LAN
+- **R2 (ABR):** Area Border Router connecting backbone to branch
+- **R3 (Area 1):** Branch office router
+- **VPC endpoints:** Simulated end-hosts for testing
 
-**Router 1 (R1) Base Configuration:**
+**Node Specifications for Each vMX:**
+- **RAM:** 2048 MB
+- **CPUs:** 2
+- **Interfaces:** 4x Ethernet
+
+**Topology Diagram (Conceptual):**
+```
+┌─────────────────────────────────────────┐
+│  BACKBONE NETWORK (Area 0)              │
+│  ┌──────┐        ┌──────┐              │
+│  │  R1  │────────│  R2  │ (ABR)        │
+│  │  LAN │        └──────┘              │
+│  └──────┘            │                 │
+│                      │ Area 0 ↔ Area 1 │
+│                   Transit Link          │
+│                      │                 │
+└──────────────────────┼────────────────┘
+                       │
+        ┌──────────────┴──────────────┐
+        │                             │
+    ┌───────┐                    ┌──────┐
+    │  R3   │                    │ ABR  │
+    │ (Area 1)                   │      │
+    └───────┘                    └──────┘
+        │
+    VPC-Left (10.20.20.0/24)
+```
+
+**Interface Assignment Plan:**
+
+| Router | Interface | Subnet | Purpose |
+|--------|-----------|--------|---------|
+| R1 | lo0 | 1.1.1.1/32 | Loopback (management) |
+| R1 | ge-0/0/0 | 10.0.12.1/30 | Transit to R2 |
+| R1 | ge-0/0/2 | 192.168.10.1/24 | Local LAN |
+| R2 | lo0 | 2.2.2.2/32 | Loopback (management) |
+| R2 | ge-0/0/0 | 10.0.12.2/30 | Transit to R1 |
+| R2 | ge-0/0/1 | 10.0.23.1/30 | Transit to R3 |
+| R3 | lo0 | 3.3.3.3/32 | Loopback (management) |
+| R3 | ge-0/0/0 | 10.0.23.2/30 | Transit to R2 |
+| R3 | ge-0/0/2 | 20.20.20.1/24 | Local LAN |
+
+---
+
+### Phase 2: Router Base Configuration
+
+Each Junos router requires authentication, SSH access, and interface addressing before OSPF can be enabled.
+
+#### 2.1 Router 1 (R1) - Backbone Router
+
 ```text
+# Enter configuration mode
 cli
-config
-set system root-authentication plain-text-password
-set system services ssh
-set system host-name R1
-set system login user admin class super-user authentication plain-text-password
+configure
 
+# Authentication & Access
+set system root-authentication plain-text-password
+[Enter password when prompted: "FortiGate@123!"]
+
+set system login user admin class super-user authentication plain-text-password
+[Enter password: "FortiGate@123!"]
+
+# Enable remote management
+set system services ssh
+set system services netconf ssh
+
+# Hostname (useful for debugging)
+set system host-name R1
+
+# Loopback interface (management & OSPF router ID)
 set interfaces lo0 unit 0 family inet address 1.1.1.1/32
+
+# Transit interface to R2
 set interfaces ge-0/0/0 unit 0 family inet address 10.0.12.1/30
+set interfaces ge-0/0/0 unit 0 family inet mtu 1500
+
+# LAN interface (end-host facing)
 set interfaces ge-0/0/2 unit 0 family inet address 192.168.10.1/24
+set interfaces ge-0/0/2 unit 0 family inet mtu 1500
+
+# Commit changes to running config
 commit and-quit
 ```
-{: .nolineno }
 
-![R1 Interfaces](https://github.com/user-attachments/assets/e1da15ec-0a66-45d9-b316-9e639fa2a9f6){: .shadow .rounded }
-
-Identical methodologies were applied to **R2** (management IP `2.2.2.2/32`) and **R3** (management IP `3.3.3.3/32`), assigning the respective transit subnet IPs to bridge the network.
-
-![R2 Interfaces](https://github.com/user-attachments/assets/a3e8121e-99dc-4dc5-893e-59af74290e56){: .shadow .rounded }
-![R3 Interfaces](https://github.com/user-attachments/assets/7ad87701-c94f-4661-bcd5-3f599f090ce9){: .shadow .rounded }
-
-**OSPF Dynamic Routing:**
-For the network to route traffic to indirectly connected subnets, the Open Shortest Path First (OSPF) protocol was implemented, defining Area 0 (Backbone) and Area 1.
-
-```text
-# On R1 (Area 0)
-set protocols ospf area 0.0.0.0 interface ge-0/0/0.0
-set protocols ospf area 0.0.0.0 interface ge-0/0/2.0
-set protocols ospf area 0.0.0.0 interface lo0.0 passive
-
-# On R2 (Area Border Router - Area 0 & 1)
-set protocols ospf area 0.0.0.0 interface ge-0/0/0.0
-set protocols ospf area 0.0.0.1 interface ge-0/0/1.0
-set protocols ospf area 0.0.0.1 interface lo0.0 passive
-
-# On R3 (Area 1)
-set protocols ospf area 0.0.0.1 interface ge-0/0/0.0
-set protocols ospf area 0.0.0.1 interface lo0.0 passive
-```
-{: .nolineno }
-
-Routing adjacency was verified successfully using `show ospf neighbor` and end-to-end `traceroute` commands.
+**Key concepts:**
+- **Loopback interface:** Used as the OSPF Router ID (elected automatically from highest loopback IP)
+- **MTU setting:** Junos defaults to 1500 bytes; keep consistent across all interfaces to avoid fragmentation issues
+- **Port numbering:** `ge-0/0/0` = Gigabit Ethernet, slot 0, PIC 0, port 0
 
 ---
 
-### Phase 3: Junos Firewall ACL Scenarios
+#### 2.2 Router 2 (R2) - Area Border Router
 
-Three distinct stateless firewall filters (`family inet filter`) were engineered on R1 to simulate common SOC incident response actions.
-
-**Scenario A: Compromised Host Isolation**
-Assume the SOC receives an alert that host `192.168.10.2` is beaconing to a C2 server. It must be blocked automatically without interacting directly with the infected endpoint.
+R2 bridges the backbone (Area 0) and the branch (Area 1), so it has interfaces in both areas.
 
 ```text
+cli
 configure
-# Block all traffic from the Linux VM IP, log it, and count it
+
+set system root-authentication plain-text-password
+[FortiGate@123!]
+
+set system login user admin class super-user authentication plain-text-password
+[FortiGate@123!]
+
+set system services ssh
+set system services netconf ssh
+set system host-name R2
+
+# Loopback
+set interfaces lo0 unit 0 family inet address 2.2.2.2/32
+
+# Area 0 side (backbone)
+set interfaces ge-0/0/0 unit 0 family inet address 10.0.12.2/30
+set interfaces ge-0/0/0 unit 0 family inet mtu 1500
+
+# Area 1 side (branch)
+set interfaces ge-0/0/1 unit 0 family inet address 10.0.23.1/30
+set interfaces ge-0/0/1 unit 0 family inet mtu 1500
+
+commit and-quit
+```
+
+---
+
+#### 2.3 Router 3 (R3) - Branch Router
+
+```text
+cli
+configure
+
+set system root-authentication plain-text-password
+[FortiGate@123!]
+
+set system login user admin class super-user authentication plain-text-password
+[FortiGate@123!]
+
+set system services ssh
+set system services netconf ssh
+set system host-name R3
+
+# Loopback
+set interfaces lo0 unit 0 family inet address 3.3.3.3/32
+
+# Transit to R2
+set interfaces ge-0/0/0 unit 0 family inet address 10.0.23.2/30
+set interfaces ge-0/0/0 unit 0 family inet mtu 1500
+
+# LAN (branch office)
+set interfaces ge-0/0/2 unit 0 family inet address 20.20.20.1/24
+set interfaces ge-0/0/2 unit 0 family inet mtu 1500
+
+commit and-quit
+```
+
+---
+
+### Phase 3: OSPF Implementation & Route Propagation
+
+#### 3.1 Understanding OSPF Architecture
+
+**OSPF in 60 seconds:**
+- Routers form **adjacencies** with neighbors on shared links
+- Each router floods its **Link State Advertisements (LSAs)** through the network
+- Every router builds an identical database and computes the shortest path tree using Dijkstra's algorithm
+- Unlike static routes, OSPF automatically detects link failures and converges within seconds
+
+**Multi-Area Design:**
+- **Area 0 (Backbone):** The core network that all areas must connect through
+- **Area 1 (Branch):** A remote network connected via an Area Border Router (ABR)
+- **Benefits:** Reduces SPF recalculation overhead, supports hierarchical scaling
+
+---
+
+#### 3.2 OSPF Configuration
+
+**On R1 (Backbone Only - Area 0):**
+
+```text
+cli
+configure
+
+set protocols ospf router-id 1.1.1.1
+set protocols ospf area 0.0.0.0 network 10.0.12.0/30
+set protocols ospf area 0.0.0.0 network 192.168.10.0/24
+
+# Make loopback passive (don't send OSPF hellos on it)
+set protocols ospf area 0.0.0.0 interface lo0.0 passive
+
+# Set transit interface priority (for designated router election)
+set protocols ospf area 0.0.0.0 interface ge-0/0/0.0 priority 100
+
+commit and-quit
+```
+
+**Why passive on loopback?** Loopback interfaces have no physical neighbors. Sending OSPF packets on them is wasteful. We keep them in the routing process to advertise the IP.
+
+---
+
+**On R2 (Area Border Router - ABR):**
+
+```text
+cli
+configure
+
+set protocols ospf router-id 2.2.2.2
+
+# Area 0 (backbone side)
+set protocols ospf area 0.0.0.0 network 10.0.12.0/30
+
+# Area 1 (branch side)
+set protocols ospf area 0.0.0.1 network 10.0.23.0/30
+
+# Passive loopback
+set protocols ospf area 0.0.0.0 interface lo0.0 passive
+
+# Make both transit interfaces active (will form adjacencies)
+set protocols ospf area 0.0.0.0 interface ge-0/0/0.0 priority 100
+set protocols ospf area 0.0.0.1 interface ge-0/0/1.0 priority 100
+
+commit and-quit
+```
+
+---
+
+**On R3 (Branch Only - Area 1):**
+
+```text
+cli
+configure
+
+set protocols ospf router-id 3.3.3.3
+set protocols ospf area 0.0.0.1 network 10.0.23.0/30
+
+# Passive loopback
+set protocols ospf area 0.0.0.1 interface lo0.0 passive
+set protocols ospf area 0.0.0.1 interface ge-0/0/0.0 priority 100
+
+commit and-quit
+```
+
+---
+
+#### 3.3 Verification & Adjacency Troubleshooting
+
+**Check OSPF neighbors:**
+
+```bash
+show ospf neighbor
+
+# Expected output:
+# Address         Interface           State ID              Pri Dead
+# 10.0.12.2       ge-0/0/0.0         Full 2.2.2.2          100 35
+```
+
+**If neighbors don't form, diagnose with:**
+
+```bash
+show ospf database summary
+show ospf interface
+show ospf statistics
+```
+
+**Common issues:**
+- **Mismatched areas:** Interface in Area 0 talking to interface in Area 1 = no adjacency
+- **OSPF disabled on interface:** Happens if subnet doesn't match any `network` command
+- **Hello/Dead timer mismatch:** Default is 10/40 seconds; must match on both sides
+
+---
+
+#### 3.4 Route Propagation Verification
+
+Once adjacencies are up, OSPF converges (usually <5 seconds). Verify with:
+
+```bash
+# View all learned routes
+show route protocol ospf
+
+# Expected on R1:
+# 10.0.23.0/30 via 10.0.12.2 (learned from R2)
+# 20.20.20.0/24 via 10.0.12.2 (learned from R3 via R2)
+
+# Trace a packet's path
+traceroute 20.20.20.1
+
+# Output should show:
+# R1 → R2 → R3 (hops 1, 2, 3)
+```
+
+---
+
+### Phase 4: Stateless Firewall Filters for Incident Response
+
+#### 4.1 Why Stateless Filters Matter in SOC Work
+
+A firewall **filter** in Junos is a set of rules that match on packet headers and apply actions. Unlike stateful firewalls (which track connections), stateless filters:
+- ✓ Process each packet independently
+- ✓ Offer deterministic, low-latency decision-making
+- ✓ Can be deployed on a border router in seconds for incident containment
+- ✗ Don't track connection state (so you must explicitly allow return traffic)
+
+**In a SOC incident context:**
+- "We've confirmed host `192.168.10.2` is compromised. Block it at the router entrance NOW."
+- Stateless filter can achieve this in <30 seconds
+- Stateful firewall might require session teardown and are slower to deploy
+
+---
+
+#### 4.2 Scenario A: Compromised Host Isolation
+
+**Scenario:** The SOC receives a malware alert for host `192.168.10.2`. Initial analysis shows C2 beaconing to external IPs. We must block this host's traffic immediately while forensics run.
+
+**Implementation on R1:**
+
+```text
+cli
+configure
+
+# Define a filter named "BLOCK-HOST"
 set firewall family inet filter BLOCK-HOST term BLOCK-192.168.10.2 from source-address 192.168.10.2/32
 set firewall family inet filter BLOCK-HOST term BLOCK-192.168.10.2 then count HOST-BLOCKED
 set firewall family inet filter BLOCK-HOST term BLOCK-192.168.10.2 then log
 set firewall family inet filter BLOCK-HOST term BLOCK-192.168.10.2 then discard
 
-# Default: allow all other LAN traffic (Implicit deny override)
+# Allow everything else (don't inadvertently block LAN)
 set firewall family inet filter BLOCK-HOST term ALLOW-REST then accept
 
-# Apply inbound on the LAN interface
+# Apply the filter to inbound traffic on the LAN interface
 set interfaces ge-0/0/2 unit 0 family inet filter input BLOCK-HOST
-commit
+
+commit and-quit
 ```
-{: .nolineno }
 
-Testing from the Linux VM resulted in 100% packet loss. R1 successfully aggregated the blocked packets in the firewall counters and generated explicit drop logs.
+**What this does:**
 
-![Ping Fail](https://github.com/user-attachments/assets/823fd8d4-216f-4304-9845-cc39e05bd961){: .shadow .rounded }
-![R1 Block Counters](https://github.com/user-attachments/assets/04cccf51-ffa9-4b0c-baf3-7d51dec33ad7){: .shadow .rounded }
-![Connection Restored](https://github.com/user-attachments/assets/d522b1e3-ade4-4be6-93ed-dab53d4e08d4){: .shadow .rounded }
+| Packet Source | Firewall Logic | Action |
+|--------------|---|--------|
+| 192.168.10.2 → * | Matches `BLOCK-192.168.10.2` | Increments counter, logs drop, discards packet |
+| 192.168.10.3 → * | No match, falls through to `ALLOW-REST` | Accepts packet |
 
-**Scenario B: Strict Web-Only Enforcement**
-Corporate policy dictates that LAN users may only use browsers (HTTP/HTTPS) and DNS. Unauthorized protocols like SSH and Telnet are strictly dropped.
+**Verification:**
+
+```bash
+# From 192.168.10.2 (compromised host), try to reach external network
+ping 8.8.8.8
+# Result: 100% packet loss (blocked by R1)
+
+# Check filter counters
+show firewall filter BLOCK-HOST
+
+# Output:
+# Filter: BLOCK-HOST
+# Name                                                Packet count    Byte count
+# BLOCK-192.168.10.2                                          45          2700
+# ALLOW-REST                                              2400         234000
+
+# Check system log for drop entries
+show log messages | grep "BLOCK-HOST"
+```
+
+---
+
+#### 4.3 Scenario B: Strict Web-Only Policy Enforcement
+
+**Scenario:** Corporate policy states LAN users may only:
+- Browse HTTP/HTTPS (TCP 80, 443)
+- Resolve DNS (UDP 53)
+- Use ICMP for diagnostics
+
+All other protocols (SSH, Telnet, FTP, etc.) must be blocked, logged, and counted.
+
+**Implementation on R1:**
 
 ```text
+cli
 configure
-# Allow ICMP, DNS (UDP 53), HTTP (TCP 80), and HTTPS (TCP 443)
+
 set firewall family inet filter WEB-ONLY term ALLOW-ICMP from protocol icmp
 set firewall family inet filter WEB-ONLY term ALLOW-ICMP then accept
+
 set firewall family inet filter WEB-ONLY term ALLOW-DNS from protocol udp
 set firewall family inet filter WEB-ONLY term ALLOW-DNS from destination-port 53
 set firewall family inet filter WEB-ONLY term ALLOW-DNS then accept
+
 set firewall family inet filter WEB-ONLY term ALLOW-WEB from protocol tcp
 set firewall family inet filter WEB-ONLY term ALLOW-WEB from destination-port [80 443]
 set firewall family inet filter WEB-ONLY term ALLOW-WEB then accept
 
-# Block, log, and count everything else
+# Deny everything else with logging
 set firewall family inet filter WEB-ONLY term DEFAULT-DENY then count DENIED-COUNT
 set firewall family inet filter WEB-ONLY term DEFAULT-DENY then log
 set firewall family inet filter WEB-ONLY term DEFAULT-DENY then discard
+
 set interfaces ge-0/0/2 unit 0 family inet filter input WEB-ONLY
-commit
+
+commit and-quit
 ```
-{: .nolineno }
 
-Validation confirmed `nslookup` and `wget` functioned normally, while `telnet` and `ssh` connection attempts timed out completely.
+**Testing the policy:**
 
-![Web Only Test](https://github.com/user-attachments/assets/21b9bcad-3894-4092-b0c8-71747ec40037){: .shadow .rounded }
-![Firewall Filter Output](https://github.com/user-attachments/assets/04a5ca2e-27b9-4a9c-bcb8-81f2cbdfd64b){: .shadow .rounded }
-![Firewall Log](https://github.com/user-attachments/assets/d7998cf5-1b0c-4761-8d21-0a408a5f2343){: .shadow .rounded }
+```bash
+# From a LAN host (192.168.10.10):
 
-**Scenario C: Malicious Indicator Blocking**
-When threat intelligence flags an active malicious IP, it is neutralized at the perimeter. Using `8.8.8.8` as the demonstration target:
+# ✓ DNS should work
+nslookup google.com
+# Result: successful resolution
+
+# ✓ HTTP should work
+wget http://example.com
+# Result: downloads successfully
+
+# ✗ SSH should timeout
+ssh user@example.com
+# Result: timeout (connection refused after 30s)
+
+# ✗ FTP should timeout
+ftp example.com
+# Result: timeout
+
+# Check what was blocked
+show firewall filter WEB-ONLY
+# Output shows DEFAULT-DENY counter incremented
+```
+
+**Why this matters for SOC:** If you notice SSH traffic from your corporate LAN to an external IP, either the filter failed or someone reconfigured the router. This becomes an immediate investigation trigger.
+
+---
+
+#### 4.4 Scenario C: Threat Intelligence-Based Blocking
+
+**Scenario:** Your threat intel feed flags `8.8.8.8` as hosting malware. You push a firewall rule to block all traffic destined for that IP.
+
+**Implementation on R1:**
 
 ```text
+cli
 configure
+
 set firewall family inet filter BLOCK-DEST-IP term BLOCK-8.8.8.8 from destination-address 8.8.8.8/32
 set firewall family inet filter BLOCK-DEST-IP term BLOCK-8.8.8.8 then count DEST-BLOCKED
 set firewall family inet filter BLOCK-DEST-IP term BLOCK-8.8.8.8 then log
 set firewall family inet filter BLOCK-DEST-IP term BLOCK-8.8.8.8 then discard
+
+# Allow everything else
 set firewall family inet filter BLOCK-DEST-IP term ALLOW-REST then accept
+
 set interfaces ge-0/0/2 unit 0 family inet filter input BLOCK-DEST-IP
-commit
+
+commit and-quit
 ```
-{: .nolineno }
 
-Pings directed to `8.8.8.8` failed instantly, while benign external IPs (`8.8.4.4`) remained reachable.
+**Verification:**
 
-![Blocked Ping](https://github.com/user-attachments/assets/8cbdd5ed-a818-401a-bf37-d3b1b35315b9){: .shadow .rounded }
-![Successful Ping](https://github.com/user-attachments/assets/39c25265-7a65-40be-ac54-1ebae0ccec70){: .shadow .rounded }
-![Show Firewall Overview](https://github.com/user-attachments/assets/a91d3ad6-8ff3-447c-9476-283152ba9b4f){: .shadow .rounded }
+```bash
+# Try to ping the malicious IP
+ping 8.8.8.8
+# Result: 100% packet loss
+
+# Try a benign IP (should work)
+ping 8.8.4.4
+# Result: successful responses
+
+# View counters
+show firewall filter BLOCK-DEST-IP
+```
 
 ---
 
-## PART 2: Perimeter Security & IPsec VPNs (FortiGate)
+#### 4.5 Real-World Application: Incident Containment Playbook
 
-With the routing backbone understood, the training progressed to cryptographic perimeter defenses. This phase utilized **EVE-NG** and **FortiOS 7.0.2** to build encrypted transport mechanisms.
+**When a compromise is confirmed:**
 
-* **FortiGate Image:** [Download FortiGate 7.0.2](https://o6uedu-my.sharepoint.com/:u:/g/personal/202018756_o6u_edu_eg/IQC__SSmdVDUTYBEUVxpeetWAR54lUoPi3ST3ZmOzvmnpfI?e=XyFTDW)
+1. **Immediate:** Deploy host isolation filter (Scenario A)
+   ```bash
+   # Takes <30 seconds to apply
+   # No traffic in or out from infected machine
+   ```
 
-Similar to the Junos deployment, the FortiGate `qcow2` images were transferred via WinSCP into the EVE-NG `/opt/unetlab/addons/qemu/` directory, and permissions were reset. 
+2. **2-5 minutes:** Apply web-only filter to the subnet (Scenario B)
+   ```bash
+   # Prevents attacker from using non-standard C2 channels
+   # Allows legitimate work to continue
+   ```
 
-![WinSCP File Transfer](https://github.com/user-attachments/assets/130811a6-6c03-48e9-8ca5-b372f6881fd4){: .shadow .rounded }
+3. **5-30 minutes:** Apply threat intel blocks for known malicious IPs (Scenario C)
+   ```bash
+   # Prevents lateral movement to attacker infrastructure
+   ```
 
-A fresh topology was mapped out, representing two distinct branch offices separated by an untrusted network.
+4. **30+ minutes:** Forensics team images the machine
+   ```bash
+   # Network containment complete
+   # Incident response continues offline
+   ```
 
-![Adding Node](https://github.com/user-attachments/assets/1f9d101b-2cae-40f5-a48e-69918a7b02c8){: .shadow .rounded }
-![Node Resources](https://github.com/user-attachments/assets/a737e765-e80f-4193-b9b0-c9ab4bfa16f2){: .shadow .rounded }
-![Lab Topology](https://github.com/user-attachments/assets/62d216b0-c4e1-4ff1-8657-0a46c328ddaf){: .shadow .rounded }
+---
 
-### Baseline FortiGate Configuration
+## PART 2: Perimeter Security & Encrypted Tunnels
 
-For `Forti-Left`, the initial IP assignment was handled via CLI, establishing the WAN (Port 2) and LAN (Port 3) addresses:
+### The Problem We're Solving (Again)
+
+Branch offices need to communicate securely. Remote workers need VPN access. But you can't send traffic in clear text over the internet. We use **IPsec** to encrypt traffic at the network layer.
+
+As a SOC analyst, you need to understand:
+- How IPsec tunnels establish (IKE Phase 1 & 2)
+- What happens if a tunnel is down (failover, rerouting)
+- How to correlate encrypted tunnel state with suspicious patterns
+- How to decrypt traffic for forensics (key derivation, packet analysis)
+
+---
+
+### Phase 1: EVE-NG Hypervisor & FortiGate Deployment
+
+#### 1.1 EVE-NG Environment Setup
+
+EVE-NG is a more feature-rich simulator than PNET Lab but serves the same purpose: orchestrate virtual network appliances.
+
+**System Requirements:**
+- 8+ GB RAM
+- 4+ CPU cores
+- 100+ GB storage (VPN appliances are large)
+- KVM or VMware as the underlying hypervisor
+
+**FortiGate Image Preparation:**
+
+```bash
+# Download FortiGate 7.0.2 qcow2 image from Fortinet portal
+# File: FortiGate-VM64-7.0.2-XXXX.qcow2
+
+# Transfer to EVE-NG server via SCP
+scp FortiGate-VM64-7.0.2.qcow2 root@<EVE_IP>:/opt/unetlab/addons/qemu/
+
+# SSH into EVE-NG
+ssh root@<EVE_IP>
+
+# Fix permissions
+/opt/unetlab/wrappers/unl_wrapper -a fixpermissions
+```
+
+---
+
+#### 1.2 Lab Topology
+
+We're simulating two branch offices separated by an untrusted WAN (the internet):
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│  BRANCH A (Left)                                            │
+│  ┌──────────────────┐              ┌──────────────────┐     │
+│  │  Forti-Left      │──────────────│  Forti-Right     │     │
+│  │  WAN: 172.16.10.1│ IPsec Tunnel │WAN: 172.16.20.1 │     │
+│  │  LAN: 10.10.10.0 │   (Encrypted)│LAN: 20.20.20.0  │     │
+│  └────────┬─────────┘              └────────┬─────────┘     │
+│           │                                 │                │
+│       VPC-A (10.10.10.5)              VPC-B (20.20.20.5)    │
+│                                                              │
+│  BRANCH B (Right)                                           │
+└─────────────────────────────────────────────────────────────┘
+```
+
+**Network Plan:**
+
+| Node | Interface | IP | Purpose |
+|------|-----------|-------|---------|
+| Forti-Left | port2 (WAN) | 172.16.10.1/30 | Internet-facing |
+| Forti-Left | port3 (LAN) | 10.10.10.1/24 | Branch A internal |
+| Forti-Right | port2 (WAN) | 172.16.20.1/30 | Internet-facing |
+| Forti-Right | port3 (LAN) | 20.20.20.1/24 | Branch B internal |
+| Simulated Internet | port1 | 172.16.15.1/30 | Router between WAN IPs |
+
+---
+
+### Phase 2: Base FortiGate Configuration
+
+#### 2.1 Initial Access & IP Assignment
+
+Once FortiGate VMs boot, they present a CLI. Default credentials are:
+- **Username:** admin
+- **Password:** (blank, press enter)
+
+**On Forti-Left, assign WAN and LAN IPs:**
 
 ```text
 config system interface
     edit port2
+        set alias "WAN-TO-ISP"
         set mode static
         set ip 172.16.10.1 255.255.255.252
         set allowaccess ping https ssh http
+        set mtu 1500
     next
     edit port3
+        set alias "LAN-INTERNAL"
         set mode static
         set ip 10.10.10.1 255.255.255.0
         set allowaccess ping https ssh http
+        set mtu 1500
     next
 end
 ```
-{: .nolineno }
 
-The FortiGate GUI was then accessed to configure the necessary static routes and baseline outbound/inbound firewall policies to permit standard cross-boundary traffic before encryption. 
+**Identical on Forti-Right (with different IPs):**
 
-![FortiOS GUI](https://github.com/user-attachments/assets/535c8f81-0156-42eb-ba19-1da5587cc23f){: .shadow .rounded }
-![Forti-Left Interfaces](https://github.com/user-attachments/assets/58b8f2a0-b60d-43ab-82e4-af3f45e53e7d){: .shadow .rounded }
-![Left Static Route](https://github.com/user-attachments/assets/4beae9e7-e869-4d22-8403-0b55503d62a6){: .shadow .rounded }
-![Left Policy Out](https://github.com/user-attachments/assets/e956f443-b46d-4699-8b39-1dc703c7f3ae){: .shadow .rounded }
-
-The configuration was symmetrically mirrored on `Forti-Right`, enabling successful ICMP reachability between the VPC endpoints.
-
-![Forti-Right Interfaces](https://github.com/user-attachments/assets/062d3c8a-4b20-42e2-9067-a5c7e0e047d1){: .shadow .rounded }
-![Right Policy Out](https://github.com/user-attachments/assets/4ff22b5a-0e13-4d6a-9e98-f54a6f456f30){: .shadow .rounded }
-![Ping Left to Right](https://github.com/user-attachments/assets/d4ce746a-525d-4efb-8809-e768577dee81){: .shadow .rounded }
-
----
-
-### Scenario 1: Site-to-Site IPsec VPN
-
-With cleartext connectivity established, the traffic flow was upgraded to an encrypted IPsec tunnel utilizing the FortiOS IPsec Wizard.
-
-![IPsec Wizard](https://github.com/user-attachments/assets/ac6da439-8b57-4d74-a8d7-7624429a753e){: .shadow .rounded }
-
-> **Cryptographic Architecture:**
-> The tunnel was built using standard IKE Main Mode. 
-> * **Phase 1 (Negotiation):** Validates identity via the Pre-Shared Key (`FortiGate@123!`) and exchanges SA proposals (DES Encryption, SHA256 Authentication, DH Group 14).
-> * **Phase 2 (ESP):** Defines the exact local (`10.10.10.0/24`) and remote (`20.20.20.0/24`) subnets authorized to traverse the payload.
-{: .prompt-info }
-
-![Phase 1 & 2 Config](https://github.com/user-attachments/assets/bd13bb72-34b4-422c-aa3c-909ffb7d8ced){: .shadow .rounded }
-
-The previous cleartext firewall policies were purged, and new dedicated VPN policies were instantiated. Traffic originating from the LAN must be explicitly permitted to exit via the logical `ToRemote` VPN tunnel interface, and vice versa.
-
-![VPN Policy 1](https://github.com/user-attachments/assets/44e470d4-f7b5-48f8-9535-2208892c9239){: .shadow .rounded }
-![VPN Policy 2](https://github.com/user-attachments/assets/027d99e8-d1b6-4881-aafe-a561416edd7b){: .shadow .rounded }
-
-Finally, static routes were modified to point destination traffic into the tunnel.
-
-![Left VPN Route](https://github.com/user-attachments/assets/dccc54a0-5aa1-4181-a277-16797caeea78){: .shadow .rounded }
-![Right VPN Route](https://github.com/user-attachments/assets/77db7726-ee6a-4f4a-948d-eaa5c0917332){: .shadow .rounded }
-
-Upon initiating traffic, the IPsec tunnel successfully negotiates, turning GREEN in the management dashboard. 
-
-![Tunnel Up](https://github.com/user-attachments/assets/70e1ac40-69ee-4871-8e3d-e71589f33208){: .shadow .rounded }
+```text
+config system interface
+    edit port2
+        set alias "WAN-TO-ISP"
+        set mode static
+        set ip 172.16.20.1 255.255.255.252
+        set allowaccess ping https ssh http
+        set mtu 1500
+    next
+    edit port3
+        set alias "LAN-INTERNAL"
+        set mode static
+        set ip 20.20.20.1 255.255.255.0
+        set allowaccess ping https ssh http
+        set mtu 1500
+    next
+end
+```
 
 ---
 
-### Scenario 2: Remote Access (Dialup) VPN
+#### 2.2 Static Routes & Baseline Policies
 
-A Site-to-Site VPN treats both sides of the connection as trusted branch offices. However, a remote worker operates from an unmanaged, untrusted endpoint (e.g., public WiFi). To accommodate this, a Dialup Remote Access VPN architecture must be deployed.
+Before encryption, we need basic routing and firewall policies to allow traffic between branches via cleartext.
 
-![Remote Access Topology](https://github.com/user-attachments/assets/496844be-d3ef-4d29-bbfc-9b361e479b46){: .shadow .rounded }
+**On Forti-Left:**
 
-`Forti-Left` was reconfigured using the **Remote Access** wizard. A dedicated user group was created for authenticated workers, and a specific DHCP scope was allocated to dynamically assign internal IPs to authorized remote endpoints.
+```text
+config router static
+    edit 1
+        set destination 20.20.20.0 255.255.255.0
+        set gateway 172.16.15.1
+        set device port2
+        set comment "Route to Branch-B via internet"
+    next
+end
 
-![Remote Access Wizard](https://github.com/user-attachments/assets/8be1021c-3e1a-4f7e-a72f-104737a04960){: .shadow .rounded }
-![Dialup Auth](https://github.com/user-attachments/assets/0bd2dd05-ff94-4078-aa14-b73e4338e9c4){: .shadow .rounded }
-![Dialup Subnet](https://github.com/user-attachments/assets/8d3d4230-b830-45f0-8c80-c7ead68ae1ac){: .shadow .rounded }
-![Dialup Complete](https://github.com/user-attachments/assets/2acd922e-3f31-42be-8140-368606a5aa7d){: .shadow .rounded }
+# Firewall policy: LAN → WAN (outbound)
+config firewall policy
+    edit 1
+        set name "LAN-to-WAN"
+        set srcintf port3
+        set dstintf port2
+        set srcaddr all
+        set dstaddr all
+        set action accept
+        set schedule always
+        set service ALL
+        set logtraffic all
+    next
+end
 
-To test the architecture, an external Windows VM was provisioned with the [FortiClient 6.2.6](https://www.mediafire.com/file/s6zcwn9jww11lro/FortiClientVPNSetup_6.2.6.0951_x64.exe/file) application. The endpoint was configured with the Remote Gateway IP and Pre-Shared Key.
+# Firewall policy: WAN → LAN (return traffic)
+config firewall policy
+    edit 2
+        set name "WAN-to-LAN"
+        set srcintf port2
+        set dstintf port3
+        set srcaddr all
+        set dstaddr all
+        set action accept
+        set schedule always
+        set service ALL
+        set logtraffic all
+    next
+end
+```
 
-![FortiClient Setup 1](https://github.com/user-attachments/assets/cc3e862f-1079-4c85-ab0d-0232e0e05077){: .shadow .rounded }
-![FortiClient Setup 2](https://github.com/user-attachments/assets/7c52b35d-cbf8-42fb-93a6-18545d01d348){: .shadow .rounded }
-![FortiClient Setup 3](https://github.com/user-attachments/assets/127afb18-18a9-4fc1-8a96-6b9b567cd3c1){: .shadow .rounded }
+**Mirror on Forti-Right** (with swapped IP subnets).
 
-Upon submitting the authorized user credentials, the tunnel authenticated successfully. The remote machine was dynamically assigned an internal IP address and granted secure, encrypted access to the localized corporate assets.
+---
 
-![Client Login](https://github.com/user-attachments/assets/b9635958-a0d9-4d1e-85bd-e46392ccdf5b){: .shadow .rounded }
-![Tunnel Established](https://github.com/user-attachments/assets/e0e9f88e-759b-4477-bcb5-8dc981beba59){: .shadow .rounded }
-![Remote Ping Success](https://github.com/user-attachments/assets/d3023919-41a7-434d-9947-0305c5819a3c){: .shadow .rounded }
+#### 2.3 Verify Cleartext Connectivity
 
-<style>
-  /* 1. Fix the "Outside" (Home Page Cards) - prevents cropping */
-  .post-preview .preview-img img,
-  .post-preview .preview-img {
-    object-fit: contain !important;
-    background-color: #1b1b1e !important;
-  }
+```bash
+# From VPC-A (10.10.10.5)
+ping 20.20.20.5
 
-  /* 2. Fix the "Inside" - Completely hides the header image and its spacing */
-  body[data-layout="post"] .post-meta + .mt-3.mb-3,
-  body[data-layout="post"] .preview-img {
-    display: none !important;
-    visibility: hidden !important;
-    height: 0 !important;
-    margin: 0 !important;
-  }
-</style>
+# Should receive replies (if routing is correct)
+# This confirms the tunnel infrastructure works *before* encryption
+```
+
+If ping fails, check:
+```bash
+# On Forti-Left
+diag ip route list
+# Verify 20.20.20.0/24 routes via 172.16.15.1
+
+show system interface
+# Verify port2 and port3 are up
+
+diag firewall policy list
+# Check policy IDs and active connection counts
+```
+
+---
+
+### Phase 3: Site-to-Site IPsec VPN
+
+#### 3.1 IPsec Concepts & Phase 1 vs Phase 2
+
+**IPsec = Internet Protocol Security**
+
+Two phases:
+- **Phase 1 (IKE - Internet Key Exchange):**
+  - Routers authenticate to each other (pre-shared key)
+  - Negotiate encryption algorithms for the control channel
+  - Exchange key material (Diffie-Hellman)
+  - Result: encrypted tunnel for Phase 2 negotiation
+  - Timeout: 28,800 seconds (8 hours) by default
+
+- **Phase 2 (ESP - Encapsulating Security Payload):**
+  - Negotiate encryption & authentication for actual data
+  - Define subnets allowed through the tunnel
+  - Exchange encryption keys derived from Phase 1
+  - Timeout: 3,600 seconds (1 hour) by default
+
+**Why this matters:** If Phase 1 fails (bad PSK, incompatible algorithms), Phase 2 never starts and the tunnel never comes up.
+
+---
+
+#### 3.2 FortiOS IPsec Wizard
+
+FortiOS has a simplified wizard for VPN setup. We'll use it, then explain what it creates.
+
+**On Forti-Left:**
+
+```text
+# Access via GUI or CLI
+config vpn ipsec phase1-interface
+    edit "site-to-site-right"
+        set interface port2
+        set peertype any
+        set peerid "branch-b"
+        set peer 172.16.20.1
+        set psksecret "FortiGate@123!"
+        set proposal aes128-sha256
+        set comments "IPsec to Branch-B"
+        set nattraversal disable
+        set dpd on-idle
+    next
+end
+
+config vpn ipsec phase2-interface
+    edit "site-to-site-right-p2"
+        set phase1name "site-to-site-right"
+        set proposal aes128-sha256
+        set pfs-dh-group 14
+        set replay on
+        set autokey-protocol esp
+        set src-addr-type name
+        set src-name "Local-Branch-Subnet"
+        set dst-addr-type name
+        set dst-name "Remote-Branch-Subnet"
+    next
+end
+```
+
+**Mirror on Forti-Right:**
+
+```text
+config vpn ipsec phase1-interface
+    edit "site-to-site-left"
+        set interface port2
+        set peertype any
+        set peerid "branch-a"
+        set peer 172.16.10.1
+        set psksecret "FortiGate@123!"
+        set proposal aes128-sha256
+        set comments "IPsec to Branch-A"
+        set nattraversal disable
+        set dpd on-idle
+    next
+end
+
+config vpn ipsec phase2-interface
+    edit "site-to-site-left-p2"
+        set phase1name "site-to-site-left"
+        set proposal aes128-sha256
+        set pfs-dh-group 14
+        set replay on
+        set autokey-protocol esp
+        set src-addr-type name
+        set src-name "Remote-Branch-Subnet"
+        set dst-addr-type name
+        set dst-name "Local-Branch-Subnet"
+    next
+end
+```
+
+---
+
+#### 3.3 Create Address Objects
+
+FortiOS needs to know what subnets are "Local" and "Remote":
+
+**On Forti-Left:**
+
+```text
+config firewall address
+    edit "Local-Branch-Subnet"
+        set subnet 10.10.10.0 255.255.255.0
+        set comment "Branch-A LAN"
+    next
+    edit "Remote-Branch-Subnet"
+        set subnet 20.20.20.0 255.255.255.0
+        set comment "Branch-B LAN"
+    next
+end
+```
+
+**On Forti-Right:**
+
+```text
+config firewall address
+    edit "Local-Branch-Subnet"
+        set subnet 20.20.20.0 255.255.255.0
+        set comment "Branch-B LAN"
+    next
+    edit "Remote-Branch-Subnet"
+        set subnet 10.10.10.0 255.255.255.0
+        set comment "Branch-A LAN"
+    next
+end
+```
+
+---
+
+#### 3.4 VPN Policies & Routing
+
+Cleartext policies are **removed**. New policies route traffic through the VPN tunnel:
+
+**On Forti-Left:**
+
+```text
+config firewall policy
+    edit 1
+        set name "LAN-to-VPN"
+        set srcintf port3
+        set dstintf site-to-site-right
+        set srcaddr "Local-Branch-Subnet"
+        set dstaddr "Remote-Branch-Subnet"
+        set action accept
+        set schedule always
+        set service ALL
+        set logtraffic all
+    next
+end
+
+config router static
+    edit 1
+        set destination 20.20.20.0 255.255.255.0
+        set device site-to-site-right
+        set comment "Route via VPN tunnel"
+    next
+end
+```
+
+**On Forti-Right:**
+
+```text
+config firewall policy
+    edit 1
+        set name "LAN-to-VPN"
+        set srcintf port3
+        set dstintf site-to-site-left
+        set srcaddr "Local-Branch-Subnet"
+        set dstaddr "Remote-Branch-Subnet"
+        set action accept
+        set schedule always
+        set service ALL
+        set logtraffic all
+    next
+end
+
+config router static
+    edit 1
+        set destination 10.10.10.0 255.255.255.0
+        set device site-to-site-left
+        set comment "Route via VPN tunnel"
+    next
+end
+```
+
+---
+
+#### 3.5 Verify IPsec Tunnel Establishment
+
+```bash
+# Check tunnel status
+diagnose vpn tunnel list
+
+# Expected output:
+# name=site-to-site-right state=up
+# ipaddr=172.16.20.1 id=20.20.20.0/24
+```
+
+**If tunnel is DOWN, diagnose:**
+
+```bash
+# Check Phase 1 status
+diagnose vpn ike log-filter
+
+# Common failures:
+# - IKE packet received but PSK mismatch → "no suitable proposal"
+# - Peer unreachable → "timeout on initial contact"
+# - Algorithm mismatch → "no common encryption"
+
+# Check Phase 2 status
+diagnose vpn ipsec tunnel name "site-to-site-right"
+
+# Test tunnel by sending traffic
+# From VPC-A:
+ping 20.20.20.5
+
+# Monitor in real-time
+diagnose vpn ipsec tunnel brief
+```
+
+---
+
+#### 3.6 Real-World VPN Troubleshooting
+
+**Scenario: Tunnel Down, No Data Flow**
+
+1. **Check Phase 1:**
+   ```bash
+   # Phase 1 should show "IPsecSA"
+   diagnose vpn ike engine-stats
+   # If 0, Phase 1 isn't negotiating
+   ```
+
+2. **Check PSK:**
+   ```bash
+   # Display configured PSK (will be masked in output)
+   show vpn ipsec phase1-interface "site-to-site-right"
+   # Verify it matches the remote end
+   ```
+
+3. **Check DPD (Dead Peer Detection):**
+   ```bash
+   # If DPD is enabled and detects peer is dead, tunnel may restart
+   # For active troubleshooting, disable temporarily
+   set dpd off
+   ```
+
+4. **Restart IKE daemon:**
+   ```bash
+   # Nuclear option: restart the key exchange service
+   diagnose vpn ike restart
+   ```
+
+---
+
+### Phase 4: Remote Access (Dialup) VPN
+
+#### 4.1 Remote Access Use Case
+
+Site-to-Site VPNs assume both ends are trusted branch offices with static IPs. But remote workers:
+- Have dynamic IPs (home WiFi, mobile hotspot, coffee shop)
+- Are on untrusted networks
+- Require per-user authentication, not pre-shared keys
+
+**Remote Access VPN** uses a different model:
+- Central VPN gateway (our Forti-Left)
+- FortiClient software on remote endpoints
+- User-based authentication (username/password or certificate)
+- Dynamic IP assignment from a DHCP pool
+
+---
+
+#### 4.2 FortiGate Remote Access Configuration
+
+**On Forti-Left:**
+
+```text
+config vpn ssl settings
+    set servercert FQDN_vpnserver
+    set tunnel-ip-pools "VPNPOOL"
+end
+
+config firewall address
+    edit "VPNPOOL"
+        set subnet 192.168.100.0 255.255.255.0
+        set comment "Remote access client pool"
+    next
+end
+
+config vpn ssl web portal
+    edit "portal1"
+        set portal-name "Corporate-VPN"
+        set tunnelmode enable
+    next
+end
+```
+
+**Create user accounts:**
+
+```text
+config user local
+    edit "john.doe"
+        set type password
+        set passwd "SecurePassword123!"
+        set email "john.doe@company.com"
+    next
+    edit "jane.smith"
+        set type password
+        set passwd "SecurePassword456!"
+        set email "jane.smith@company.com"
+    next
+end
+```
+
+**Create a user group for VPN access:**
+
+```text
+config user group
+    edit "vpn-users"
+        set member "john.doe" "jane.smith"
+        set comment "Remote workers"
+    next
+end
+```
+
+**VPN policy:**
+
+```text
+config firewall policy
+    edit 1
+        set name "SSLVPN-to-LAN"
+        set srcintf ssl.root
+        set dstintf port3
+        set srcaddr all
+        set dstaddr "Local-Branch-Subnet"
+        set action accept
+        set schedule always
+        set service ALL
+        set logtraffic all
+        set groups "vpn-users"
+    next
+end
+```
+
+---
+
+#### 4.3 FortiClient Configuration (Remote End)
+
+FortiClient is the VPN client software that remote workers install.
+
+**Download:** [FortiClient 6.2.6 or 7.x](https://fortinet.com/support/product-downloads)
+
+**Configuration Steps:**
+
+1. **Open FortiClient → VPN**
+
+2. **Add Connection:**
+   - **Name:** Corporate VPN
+   - **Server Address:** 172.16.10.1 (Forti-Left WAN IP)
+   - **Port:** 443 (default SSL VPN port)
+   - **VPN Type:** SSL-TLS
+   - **Username:** john.doe
+   - **Save Password:** (optional, for convenience)
+
+3. **Advanced Settings (optional):**
+   - **Certificate Verification:** Disable for self-signed certs (in labs)
+   - **Compression:** Enable (saves bandwidth)
+   - **Anti-Virus Integration:** Enable (if AV is installed)
+
+---
+
+#### 4.4 Tunnel Establishment & Verification
+
+**Connect from FortiClient:**
+
+```
+1. Click "Connect"
+2. Enter password when prompted
+3. Wait for handshake (10-15 seconds)
+4. Status should show "Connected" with a green light
+```
+
+**Verify on FortiGate side:**
+
+```bash
+# Check active SSL VPN sessions
+diagnose vpn ssl list
+
+# Expected output:
+# UserName         Ip          Proto  Cipher         Auth
+# john.doe         192.168.100.2 TLS  AES-GCM        PASS
+
+# Check dynamic IP assignment
+show system dhcp server
+# Should show VPNPOOL with active leases
+
+# Verify firewall policy hit counts
+show firewall policy 1
+# Counter should increment as remote user sends traffic
+```
+
+---
+
+#### 4.5 Test Remote Access Connectivity
+
+**From the remote FortiClient machine:**
+
+```bash
+# Ping a server on the corporate LAN
+ping 10.10.10.5
+
+# Browse to internal intranet
+curl http://10.10.10.100/portal
+
+# RDP to a corporate workstation
+mstsc 10.10.10.50
+
+# Verify traffic is encrypted
+# (Can't sniff cleartext on the wire)
+```
+
+**If connectivity fails, diagnose:**
+
+```bash
+# On FortiGate
+diagnose vpn ssl user list
+
+# Check if user is in the VPN group
+show user group "vpn-users"
+
+# Check firewall policy is allowing traffic
+diagnose firewall policy list | grep SSLVPN
+
+# Enable SSL VPN debug
+diagnose debug application sslvpn -1
+```
+
+---
+
+## Summary & Key Takeaways
+
+### What You Now Understand
+
+✓ **Layer 3 Routing:**
+- Multi-area OSPF for scalable, dynamic network design
+- How routers converge when topologies change
+- Troubleshooting adjacency and route propagation
+
+✓ **Incident Response at the Network Edge:**
+- Stateless firewall filters for immediate threat containment
+- How to block compromised hosts, enforce policies, and neutralize threats
+- Real-world deployment timelines and verification procedures
+
+✓ **Encrypted Transport:**
+- IPsec Phase 1 (IKE key exchange) and Phase 2 (ESP data encryption)
+- Site-to-Site VPN for trusted branch office communication
+- Remote Access VPN for untrusted remote workers
+
+✓ **SOC Relevance:**
+- You can now reason about network compromise detection
+- Understand why certain ports are blocked or tunnels are down
+- Identify when encrypted traffic indicates policy violations
+- Troubleshoot network issues that impact incident response
+
+---
+
+### Next Steps
+
+1. **Build this lab yourself.** Hands-on experience cements understanding far better than reading.
+
+2. **Modify and experiment:**
+   - Add a third branch office (Area 2)
+   - Implement OSPF authentication (prevents route hijacking)
+   - Deploy access lists on multiple routers
+   - Simulate link failures and observe convergence
+
+3. **Integrate with security tools:**
+   - Syslog OSPF neighbor changes to your SIEM
+   - Alert on firewall filter drops
+   - Monitor VPN tunnel status
+
+4. **Study for certifications:**
+   - **Juniper:** JNCIS-ENT (Enterprise Routing & Switching)
+   - **Fortinet:** NSE 4 / NSE 5 (FortiGate Administration & NSE)
+   - **CompTIA:** Security+, Network+
+
+---
+
+### Lab Files & References
+
+- **Junos CLI Reference:** https://www.juniper.net/documentation/
+- **FortiOS CLI Reference:** https://docs.fortinet.com/
+- **EVE-NG:** https://www.eve-ng.net/
+- **PNET Lab:** http://pnetlab.com/
+
+---
+
+**Built as part of BARQ Systems network and cybersecurity training program.**
+**Portfolio: [uphillpush.github.io/Yahia-Osama-SOC-Analyst-Portfolio](https://uphillpush.github.io/)**
