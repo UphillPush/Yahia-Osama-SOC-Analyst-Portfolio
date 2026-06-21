@@ -6,7 +6,8 @@ date: 2026-06-21 00:00:00 +0200
 categories: ["Network Security", "Lab Walkthrough", "SOC Training"]
 tags: [junos, fortigate, eve-ng, pnet-lab, ospf, ipsec, acl, vpn, incident-response, blue-team, network-forensics]
 pin: true
-image: https://github.com/user-attachments/assets/130811a6-6c03-48e9-8ca5-b372f6881fd4
+image:https://github.com/user-attachments/assets/8d90b223-aea8-4db6-bb42-c1a74af1363a
+
 ---
 
 # Enterprise Network Security Architecture: BARQ Systems Lab Training
