@@ -7,7 +7,7 @@ categories: ["Home Lab", "Network Security"]
 tags: [junos, fortigate, pnet-lab, eve-ng, ospf, acl, ipsec, vpn, blue-team]
 pin: false
 image:
-  path: [https://github.com/user-attachments/assets/130811a6-6c03-48e9-8ca5-b372f6881fd4](https://github.com/user-attachments/assets/130811a6-6c03-48e9-8ca5-b372f6881fd4)
+  path: 
   preview: false
   class: img-contain
 ---
