@@ -9,26 +9,135 @@ redirect_from:
 ---
 
 
-# Snapped-Phish-ing-Line
-<img width="1903"  alt="header" src="https://github.com/user-attachments/assets/3cd4145c-8211-42ce-88f9-a5e57fbf2d84" />
+# Detecting LSASS Credential Dumping in ELK Using Atomic Red Team
 
-## An Ordinary Midsummer Day...
+#### Generating real adversary telemetry on a Windows VM and building Kibana detection rules that catch it in under five minutes — from comsvcs.dll dumps to encoded PowerShell execution.
 
-#### As an IT department personnel of SwiftSpend Financial, one of your responsibilities is to support your fellow employees with their technical concerns. While everything seemed ordinary and mundane, this gradually changed when several employees from various departments started reporting an unusual email they had received. Unfortunately, some had already submitted their credentials and could no longer log in.
+Contents
+Lab overview & architecture
+Phase 1 — Environment setup
+Phase 2 — Install Atomic Red Team
+Phase 3 — Execute attack simulations
+Phase 4 — Kibana detection rules
+Phase 5 — Dashboard build
+Phase 6 — Cleanup
+STAR write-up template
+MITRE ATT&CK mapping
 
-### You now proceeded to investigate what is going on by:
+## 01 Lab overview & architecture
 
-1. Analysing the email samples provided by your colleagues.
-1. Analysing the phishing URL(s) by browsing it using Firefox.
-1. Retrieving the phishing kit used by the adversary.
-1. Using CTI-related tooling to gather more information about the adversary.
-1. Analysing the phishing kit to gather more information about the adversary.
+Credential dumping via LSASS memory (MITRE ATT&CK T1003.001) remains a critical execution checkpoint for ransomware operators and APT actors to achieve privilege escalation. Defending against this vector requires deep visibility; this lab bridges the gap between threat theory and defense by emulating the attack, isolating the resulting telemetry, and building resilient detection logic from the ground up to secure the enterprise perimeter.
 
-Note: The phishing emails to be analysed are under the phish-emails directory on the Desktop. Usage of a web browser, text editor and some knowledge of the grep command will help.
+###Objective
+Simulate three distinct LSASS dumping sub-techniques on a Windows 10 VM, ship the generated telemetry to an ELK Stack via Winlogbeat, and build working Kibana detection rules that independently catch each technique.
 
-## Answer the questions below
->![](https://img.shields.io/badge/Question-blue) Who is the individual who received an email attachment containing a PDF?
+### Architecture 
+<img width="1451" height="593" alt="image" src="https://github.com/user-attachments/assets/f68dbe7d-faa5-4587-b2ed-6a5ec452cbd4" />
 
+## Phase 1 — Environment setup
+This phase configures Windows auditing and Sysmon so that the attacks in Phase 3 actually generate visible telemetry — most tutorials skip this and end up with empty Kibana dashboards.
+
+First of all teo virtual machines are created: 
+1- the windows 10 machine which would be monitored 
+2- the ubuntu machine where it detects attack and makes an alerts 
+
+the two machine should be connected on the same network and can ping each other
+
+<img width="1904" height="945" alt="image" src="https://github.com/user-attachments/assets/ce804a86-35ad-4f67-8fb2-158524661457" />
+
+note: if win can ping the linux while the opposite doesn't happen, make sure the ICMP echo inbound rule is enables in windows firewall
+
+section 1 - Ubuntu set-up 
+ELK requires java installation, where it could be installed through the command: 
+```shell
+sudo apt install default-jdk -y
+```
+for verifying java installation : 
+```shell
+java -version
+```
+where it shows the version of java installed
+
+then elastic search is downloaded and installed through the command:
+```shell
+cd /home/$(whoami)/Downloads
+wget https://artifacts.elastic.co/downloads/elasticsearch/elasticsearch-7.17.9-amd64.deb
+sudo dpkg -i elasticsearch-7.17.9-amd64.deb
+```
+ after installing elastic search, the `elasticsearch.yml` is opened with the command 
+ ```shell
+sudo nano /etc/elasticsearch/elasticsearch.yml
+```
+tip: ssh through local host cmd is recommended to facilitate the commands trasfer through VMs 
+
+ then the `elasticsearch.yml` file is configured through adding 
+ ```yml
+xpack.security.enabled: true
+xpack.security.transport.ssl.enabled: true
+xpack.security.transport.ssl.keystore.path: /etc/elasticsearch/certs/elastic-certificates.p12
+xpack.security.transport.ssl.truststore.path: /etc/elasticsearch/certs/elastic-certificates.p12
+xpack.security.transport.ssl.verification_mode: certificate
+xpack.security.authc.api_key.enabled: true
+#--------------Paths-------------------
+path.logs: /var/log/elasticsearch
+path.data: /var/lib/elasticsearch
+#--------------Network-----------------
+network.host: 0.0.0.0
+http.port: 9200
+#--------------Discovery-------------------
+cluster.name: elk-lab
+node.name: ubuntu-node
+cluster.initial_master_nodes: ["ubuntu-node"]
+```
+Saved: Ctrl+X → Y → Enter
+
+For ensuring the password for elastic user is known: 
+```shell
+sudo /usr/share/elasticsearch/bin/elasticsearch-setup-passwords auto
+```
+This will show the password for the elastic user, it coppied for the further steps
+
+after installing and configuring elasticsearch, its started through the command
+```shell
+sudo systemctl start elasticsearch
+sudo systemctl enable elasticsearch
+```
+If the status shows active, the elastic search is configured and run succcessfully. 
+browsing `http://[MACHINE_IP]:9200` Should return JSON with cluster info.
+
+<img width="817" height="415" alt="image" src="https://github.com/user-attachments/assets/41ca64f8-1a06-4fd2-b3b4-32d0f20c7296" />
+
+After the installation of the elasticsearch, the dashboard for reviewing the logs and making alerts is Kibana, which could be dwonloaded and installed through the commands 
+```shell
+cd /home/$(whoami)/Downloads
+wget https://artifacts.elastic.co/downloads/kibana/kibana-7.17.9-amd64.deb
+sudo dpkg -i kibana-7.17.9-amd64.deb
+```
+
+Kibana is configured as well through the `kibana.yml` file 
+```shell
+sudo nano /etc/kibana/kibana.yml
+```
+Where some modifications and configurations are added 
+```yml
+server.host: "0.0.0.0"
+server.port: 5601
+elasticsearch.hosts: ["http://localhost:9200"]
+elasticsearch.username: "kibana_system"
+elasticsearch.password: "oog1Rh3LSTjWHlYzLY1u"
+xpack.encryptedSavedObjects.encryptionKey: "thisisaverylongrandomstringof32charactersforencryption12345"
+```
+note: the kibana_system and its password was gotten from elasticsearch previously 
+
+Now, starting kibana through the commands
+```shell
+sudo systemctl start kibana
+sudo systemctl enable kibana
+```
+then browsing the url `http://[MACHINE_IP]:5601`
+will prompt this login page, where the elastic password is used 
+<img width="945" height="675" alt="image" src="https://github.com/user-attachments/assets/9b636ced-7ee5-44c5-ab36-94961a901840" />
+Kibana home should be seen . If blank, the site is refreshed after 10 seconds.
 
 
 #### First, open the phish-emails dir on the desktop and right-click `open terminal here`, then we need to search for the file that contains the pdf attachment. This can be achieved through the command
