@@ -1,4 +1,4 @@
----
+<img width="949" height="652" alt="image" src="https://github.com/user-attachments/assets/2405970d-5c3f-40fb-ac23-912044a23201" /><img width="949" height="652" alt="image" src="https://github.com/user-attachments/assets/328b19ca-144c-42de-89dc-0cbe595d3482" />---
 layout: default
 title: "TryHackMe: Snapped Phish-ing Line Walkthrough"
 description: "Detailed solution and walkthrough for the Snapped Phish-ing Line challenge on TryHackMe."
@@ -139,225 +139,287 @@ will prompt this login page, where the elastic password is used
 <img width="945" height="675" alt="image" src="https://github.com/user-attachments/assets/9b636ced-7ee5-44c5-ab36-94961a901840" />
 Kibana home should be seen . If blank, the site is refreshed after 10 seconds.
 
+## PART 3: WINDOWS (TINY10) SETUP
+For this part, atomic red team is used; which is  an open-source library of bite-sized, safe cyberattack simulations mapped to the MITRE ATT&CK framework. By running simple, isolated commands—like mimicking a hacker trying to steal a password or alter a registry key—security teams can instantly verify whether their logging and alerts actually catch the threat. It is essentially a quick, copy-paste fire drill that lets you safely test your own defenses to ensure they work before a real attack happens.
 
-#### First, open the phish-emails dir on the desktop and right-click `open terminal here`, then we need to search for the file that contains the pdf attachment. This can be achieved through the command
-
-```bash 
-grep -l 'name=".*\pdf"' *.eml
+for it to run, the windows defender real-time protection has to be disabled in order not to block the atomic red team 
+it's disabled in the powershell through the command 
+```powershell
+Set-MpPreference -DisableRealtimeMonitoring $true
 ```
-This will return the name of the eml file that has a pdf attachment. We want to find out who received that pdf. The command is tunneled with `xargs` to view how this email was sent to in the command below
+verifying its off 
 
-```bash 
-grep -l 'name=".*\pdf"' *.eml | xargs -d '\n' "To:"
+```powershell
+Get-MpPreference | Select DisableRealtimeMonitoring
 ```
+which should return true 
+<img width="700" height="330" alt="image" src="https://github.com/user-attachments/assets/b4065c3e-335f-4e11-b295-b3cafe9f9ba5" />
 
-<img width="100%"  alt="code of answer1" src="https://github.com/user-attachments/assets/f9a4c4a7-1dde-4586-b319-f2bcbf498b41" />
-<br>
-<br>
+Default windows logs doesn't show much details about the logs as if there was an embedded command it won't appear, so Sysmon is used and installed to have more detailed logs to help more in investigations. As Sysmon provides detailed Windows telemetry (Event ID 1, 3, 7, 8, 10, 13, etc.).
+It could be downloaded through the link:
+https://learn.microsoft.com/en-us/sysinternals/downloads/sysmon
+Then extraced in a folder with path `C:\Sysmon\ (create the folder first)`
 
->![](https://img.shields.io/badge/Answer-success) William McClean
-
-<br> 
-<br>
-<br> 
-<br>
-
-> ![](https://img.shields.io/badge/Question-blue) **What email address was used by the adversary to send the phishing emails?**
-#### The sender name of all files can be displayed with grep command too, as follows
-```bash
-grep -h -A 1 "^From:" *.eml"
+To decrease the noise of collected logs and colled only needed and mendatory logs, a configuration file is used to configure the sysmon installation with just the needed logs collection 
+```powershell
+cd C:\Sysmon
+Invoke-WebRequest -Uri "https://raw.githubusercontent.com/SwiftOnSecurity/sysmon-config/master/sysmonconfig-export.xml" -OutFile "sysmon-config.xml"
 ```
-Where `-h` is used to hide the file name   
-&emsp; &emsp;&emsp;`-A` for displaying the line after the search keyword and the lines after, depending on the number follows <br> 
-&emsp;&emsp;  &emsp;   `1` number of lines to display after the line match <br>   
-
-  <img width="624"  alt="Picture3" src="https://github.com/user-attachments/assets/707fd174-9ef8-4df1-b6fa-45b6344ba6f5" />
-  <br>
-  <br>
-  
->![](https://img.shields.io/badge/Answer-success) Accounts.Payable@groupmarketingonline.icu
-
-<br> 
-<br>
-<br> 
-<br>
-
-> ![](https://img.shields.io/badge/Question-blue) **What is the redirection URL to the phishing page for the individual Zoe Duncan? (defanged format)**
-#### For this question, we have to open the email sent to Zoe and download the attached html to inspect it 
-<img width="1795" alt="Screenshot 2026-01-18 175342" src="https://github.com/user-attachments/assets/e0be1594-7286-4eef-a214-3aff404add25" />
-<img width="1798" alt="Screenshot 2026-01-18 175412" src="https://github.com/user-attachments/assets/da8fb663-f7ff-4d8c-999f-8cebc27fa606" />
-
-<br><br>
-Now, the html file must be inspected for any url inside it, which can be done through the commnad 
-```bash
-grep "http[^ ]" *.html
+then Sysmon is installed along with this configuration 
+```powershell
+cd C:\Sysmon
+.\Sysmon64.exe -i -c sysmon-config.xml -accepteula
 ```
-<img width="1132"  alt="Screenshot 2026-01-18 175932" src="https://github.com/user-attachments/assets/2fecd1a0-3253-4df7-b2e4-30704c38a282" />
-<br> 
-<br>
-So the URL is:   
+Verifyning the installation 
+```powershell
+Get-Service Sysmon64
+```
+<img width="431" height="186" alt="image" src="https://github.com/user-attachments/assets/72903f71-67cf-4d61-90ba-db5362b1b8fd" />
 
-http://kennaroads.buzz/data/Update365/office365/40e7baa2f826a57fcf04e5202526f8bd/?email=zoe.duncan@swiftspend.finance&error    
+Command line logs has to be enabled as well for the powershell commands to be seen 
+```powershell
+reg add "HKLM\Software\Microsoft\Windows\CurrentVersion\policies\system\Audit" /v ProcessCreationIncludeCmdLine_Enabled /t REG_DWORD /d 1 /f
+```
+verifying through the command:
+```powershell
+reg query "HKLM\Software\Microsoft\Windows\CurrentVersion\policies\system\Audit"
+```
+<img width="768" height="94" alt="image" src="https://github.com/user-attachments/assets/215305f1-de17-4ea1-af6f-e2ff070f2120" />
 
-  
-This URL has to be defanged as required in the question, so Cyberchef was used to do it: 
-<br> 
-<br> 
-<img width="100%"  alt="Picture4" src="https://github.com/user-attachments/assets/83df2aca-2f4f-46bd-b081-dafb5ddfdbc3" />   
-<br> 
->![](https://img.shields.io/badge/Answer-success) hxxp[://]kennaroads[.]buzz/data/Update365/office365/40e7baa2f826a57fcf04e5202526f8bd/?email=zoe[.]duncan@swiftspend[.]finance&error
-<br>
-<br>
-<br>
-<br>
+Installing winlogbeat
+ After setting the the attacking tool and defining the logs to be collected, winlogbeat is used to monitor and gather the logs defines and send it all to the elastic search for the investigation. 
+ winlogbeat could be downloaded through this command:
+ ```powershell
+cd $env:TEMP
+Invoke-WebRequest -Uri "https://artifacts.elastic.co/downloads/beats/winlogbeat/winlogbeat-7.17.9-windows-x86_64.zip" -OutFile "winlogbeat-7.17.9-windows-x86_64.zip"
+Expand-Archive "winlogbeat-7.17.9-windows-x86_64.zip" -DestinationPath "C:\Program Files\"
+Rename-Item "C:\Program Files\winlogbeat-7.17.9-windows-x86_64" -NewName "Winlogbeat"
+```
+Then as the elastic search and kibana was configures, the winlogbeat is configured as well through the .yml file as follows:
+```yml
+winlogbeat.event_logs:
+  - name: System
+    ignore_older: 24h
+  - name: Security
+    ignore_older: 24h
+  - name: Microsoft-Windows-Sysmon/Operational
+    ignore_older: 24h
 
-> ![](https://img.shields.io/badge/Question-blue) **What is the URL to the .zip archive of the phishing kit? (defanged format)**
-#### The phishing URL sent to Zeo has a specific path to her, but if we remove the path related to the user, it will direct us to some files it's hosting 
-so for the link:   
-http://kennaroads.buzz/data/Update365/office365/40e7baa2f826a57fcf04e5202526f8bd/?email=zoe.duncan@swiftspend.finance&error  
-we will just keep the main path:   
-http://kennaroads.buzz/data/Update365/  
-<img width="624" height="312" alt="Picture5" src="https://github.com/user-attachments/assets/80a14ab3-5ad4-4aaf-8bd6-227cbfae57d0" />
-<br>
-<br>
-There is no `.zip` file here, so going back a bit to the link:  
-http://kennaroads.buzz/data    
+ # ====================== Elasticsearch template settings =======================
+setup.template.name: "name1"
+setup.template.pattern: "name2"
 
-show us this page   
+# ---------------------------- Elasticsearch Output ----------------------------
+output.elasticsearch:
+  enable: true
+  # Array of hosts to connect to.
+  hosts: ["192.168.1.7:9200"]
+  protocol: "http"
+  username: "elastic"
+  password: "5klVgGXUiPZBIFM1QAP9"
+  index: "winlogbeat-%{+yyyy.MM.dd}"
 
-   <img width="624" height="303" alt="Picture6" src="https://github.com/user-attachments/assets/e66c4b1f-14e2-4d7c-b9e4-7a3944e648c4" /> 
-   <br>
-   <br> 
-   Now, we can clearly see the `.zip` archive of the phishing kit, which is Update365.zip
-   so the link we are looking for is:   
-   http://kennaroads.buzz/data/Update365.zip    
-   
-   defang this URL using CyberChef:   
-<img width="1430" height="695" alt="Picture7" src="https://github.com/user-attachments/assets/3d22b28d-70d0-4290-9310-5a1de12ed48b" />
-<br>
-<br>
+logging.level: info
+logging.to_files: true
+logging.files:
+  path: C:\ProgramData\Winlogbeat\Logs
 
->![](https://img.shields.io/badge/Answer-success) hxxp[://]kennaroads[.]buzz/data/Update365[.]zip
-<br>
-<br>
-<br>
-<br>
-
-> ![](https://img.shields.io/badge/Question-blue) **What is the SHA256 hash of the phishing kit archive?**
-#### Download the Update365.zip in the phish-emails dir, then in the terminal write the command:   
-```bash
-sha256sum Update365.zip
+# ================================= Processors =================================
+processors:
+  - add_host_metadata:
+      when.not.contains.tags: forwarded
+  - add_cloud_metadata: ~
 ```
 
-<img width="624" height="232" alt="Picture8" src="https://github.com/user-attachments/assets/d5a3d8b7-99a4-46ef-9898-689ec866dec5" />
-<br> 
-<br>
-
-> ![](https://img.shields.io/badge/Answer-success) ba3c15267393419eb08c7b2652b8b6b39b406ef300ae8a18fee4d16b19ac9686
-     
-<br>
-<br>
-<br>
-<br>
-
-> ![](https://img.shields.io/badge/Question-blue) **When was the phishing kit archive first submitted? (format: YYYY-MM-DD HH:MM:SS UTC)**
-#### Using an open-source, popular tool for investigating viruses, VirusTotal is the best option.   
-In my browser, I visited virustotal page and inserted the archive sha256 hash to scan it, and easily saw the submission date  
-<img width="100%"  alt="image" src="https://github.com/user-attachments/assets/0dd5610f-7af5-4716-9f1a-aa2217ffffeb" />
-
-<br> 
-<br>
-
-> ![](https://img.shields.io/badge/Answer-success) 2020-04-08 21:55:50 UTC
-
-<br>
-<br>
-<br>
-<br>
-
-> ![](https://img.shields.io/badge/Question-blue) **What was the email address of the user who submitted their password twice?**
-#### The best way to track the login attempts is through logs, and in previous questions its know where are the hosting files  
-so back again to the link:   
-http://kennaroads.buzz/data    
-
-a `log.txt` file is seen, open it and try to look up for repeated email or password     
-
-<img width="975"  alt="image" src="https://github.com/user-attachments/assets/1c7fb47b-d887-417a-8015-05320392bb11" />  
-
-> ![](https://img.shields.io/badge/Answer-success) michael.ascot@swiftspend.finance
-<br>
-<br>
-<br>
-<br>
-
-> ![](https://img.shields.io/badge/Question-blue) **What was the email address used by the adversary to collect compromised credentials?**
-#### To know this we have to investigate more in the phishing kit archive, heading back to the host website at:   
-http://kennaroads.buzz/data/Update365.zip     
-
-   the Update365.zip is downloaded, then we move it to the phish-emails dir to investigate it using the command
-   ```bash
-  mv ~/Downloads/Update365.zip .
+then it's installed as a windows service 
+```powershell
+cd "C:\Program Files\Winlogbeat"
+.\install-service-winlogbeat.ps1
 ```
-Then Unzip it using the command  
-```bash
-unzip Update365.zip
+And started with verifying through the commands
+```powershell
+Start-Service winlogbeat
+Get-Service winlogbeat
 ```
+<img width="528" height="117" alt="image" src="https://github.com/user-attachments/assets/a87497fd-4d31-47b3-b108-7c7e06c7d3ca" />
 
-<img width="1289"  alt="image" src="https://github.com/user-attachments/assets/35f93b98-3539-4862-b259-c185e12e83cd" />
+verifying the data is sent in kibana:
+The kibana is opened in the ubuntu machine through the url `http://localhost:5601`
 
-  The file that collects emails and send it have the word send in it for sure and is in the Update365 folder, so searching for files that contain the send keyword using the command  
-  ```bash
-grep -r "*send"
+then browsed to Management -> Dev tools 
+
+<img width="909" height="663" alt="image" src="https://github.com/user-attachments/assets/44e90dad-295f-4dc2-9209-ff5d123cce06" />
+ In the console, `GET winlogbeat-*/_search` is typed and pressed play button, which shows thw windows events 
+<img width="941" height="650" alt="image" src="https://github.com/user-attachments/assets/9e161577-9cf4-4036-a1a3-17a1ce125a4b" />
+
+Now after installing all the required tools and made all the needed configuration, its time for testing! 
+
+For begining the testing, atomic red team is downloaded through the commands: 
+```powershell
+cd C:\
+Invoke-WebRequest -Uri "https://github.com/redcanaryco/atomic-red-team/archive/master.zip" -OutFile "atomic-red-team-master.zip"
+Expand-Archive "atomic-red-team-master.zip" -DestinationPath "C:\"
+Rename-Item "C:\atomic-red-team-master" -NewName "AtomicRedTeam"
 ```
-we found  
-
-<img width="1134" alt="image" src="https://github.com/user-attachments/assets/fa5c1788-f72f-4d80-985b-d78edfb768f2" />   
-
-  The submit.php is the file responsible for the submit button, to further investigate it we tunneled the command with cat
-<img width="975"  alt="image" src="https://github.com/user-attachments/assets/75cc76b2-1453-4bab-a78b-d8112be8b627" />
-<img width="975" alt="image" src="https://github.com/user-attachments/assets/dd1122d7-87e0-4335-a413-37ad673aaa00" />
-<br>
-
-
-Here, another suspicious email is found, and the responses are sent to whom is 
-> ![](https://img.shields.io/badge/Answer-success) m3npat@yandex.com
-<br>
-<br>
-<br>
-<br>
-
-> ![](https://img.shields.io/badge/Question-blue) **The adversary used other email addresses in the obtained phishing kit. What is the email address that ends in "@gmail.com"?**
-#### This one is easy, you just have to search for an email that ends with @gmail.com using the command:  
-```bash
-grep -r "@gmail.com"
+Installing Invoke-AtomicRedTeam Module right after:
+```powershell 
+cd "C:\AtomicRedTeam\invoke-atomicredteam"
+.\Install-AtomicRedTeam.ps1 -getAtomics
 ```
-<img width="1319"  alt="image" src="https://github.com/user-attachments/assets/88218dd2-ad78-4a3f-bb85-7f103140ebc8" />
-<br>
-<br>
+note: Here is the difference in a nutshell:
 
-> ![](https://img.shields.io/badge/Answer-success) jamestanner2299@gmail.com
-<br>
-<br>
-<br>
-<br>
+- Atomic Red Team (The Library): This is the actual collection of tests (written as YAML files). Think of it as a recipe book filled with instructions on how to mimic hacker techniques.
 
-> ![](https://img.shields.io/badge/Question-blue) **What is the hidden flag?**
+- Invoke-AtomicRedTeam (The Runner): This is a PowerShell module used to execute those tests. Think of it as the chef that reads the recipe book and actually cooks the meal (runs the commands on your system).
 
-Reading the instruction for this one :   
-<img width="651" alt="image" src="https://github.com/user-attachments/assets/6a401184-e86a-4eba-aa40-fbc8d4539d84" />  
+For Importing the module: 
+```powershell
+Import-Module "C:\AtomicRedTeam\invoke-atomicredteam\Invoke-AtomicRedTeam.psd1"
+```
+verifying 
+```powershell
+Invoke-AtomicTest T1003.001 -ShowDetails
+```
+<img width="1659" height="1075" alt="image" src="https://github.com/user-attachments/assets/3a3e1af2-bd97-47cc-a89f-59a2122379bb" />
 
-  Then the flag is a text file that is a subdomain or a directory of the phishing URL, since there is no enumeration tool in the VM like Gobuster, I guessed its called `flag.txt`   
-  so I tried this directory in the URL :   
-  <img width="975"  alt="image" src="https://github.com/user-attachments/assets/42596687-eee8-4ac9-a91e-5ada5691f5e9" />
-  <br> 
-  So the flag is found, but it seems to be encoded. For that, we will use CyberChef to decode it back 
+PART 5:  CREATE KIBANA INDEX & RULES
+First kibana index pattern is created through 
+1- clicking Management -> Index pattern 
+2- then Create index pattern
+3- Naming it winlogbeat-*
+4- clicking next 
+5- Timestamp field: @timestamp
+6- clicking Create index pattern 
 
-  <img width="975"  alt="image" src="https://github.com/user-attachments/assets/53228822-dc45-47b2-9479-ef89ee5fd601" />
-  <br>
-  <br>
-  
-  > ![](https://img.shields.io/badge/Answer-success) THM{pL4y_w1Th_tH3_URL}
+after these steps, the winlogbeat-* index could be seen in the discover page with all the logs recieved from the windows PC 
+note: the date has to be changed for enough period
+
+<img width="949" height="652" alt="image" src="https://github.com/user-attachments/assets/5d4db6ae-48f0-4fea-ad05-4479b8bacabe" />
+
+A detection  rule is then created to alert for any incidents set by the rule through these steps:
+Rule 1: LSASS Process Access (Event ID 10)
+1- clikcing security -> Rules 
+2- Clicking Create new rule 
+3- Selecting Custom Query 
+4- in the Query box `event.code: "10" AND winlog.event_data.TargetImage: *lsass.exe` is typed 
+5- Clicking continue 
+6- Filling in: 
+    - Name: LSASS Memory Access
+    - Description: Credential dumping attempt 
+    - Severity: High 
+    - Risk score: 85
+    - MITRE ATT&CK: Credential Access -> T1003.001
+7- Clicking create and enable rule 
+<img width="940" height="656" alt="image" src="https://github.com/user-attachments/assets/c39cc5f7-435c-42a9-bc09-43f216699a18" />
+
+Rule 2: Encoded PowerShell Execution (Event ID 4688)
+1- creating a new rule 
+2- Query: `event.code: "4688" AND process.name: "powershell.exe" AND (winlog.event_data.CommandLine: "*-enc*" OR winlog.event_data.CommandLine: "*-EncodedCommand*")`
+3- Filling in:
+  -Name: Encoded Powershell execution 
+  -Description: detection of any encoded powershell commands 
+  -Severity score: 70
+  -MITRE ATT&CK: Execution -> T1059.001
+4- Clicking create nad enable rule 
+
+<img width="939" height="618" alt="image" src="https://github.com/user-attachments/assets/41c95e07-6cda-43ea-b85e-28a3f41b81e3" />
+
+PART 6: RUN THE LAB
+On Windows,  5-10 minutes are waited for initial Sysmon events to ship to Elasticsearch.
+Then kibana -> Dev tools is checked through:
+```
+GET winlogbeat-*/_search
+{
+  "query": {
+    "match": {
+      "event.code": "1"
+    }
+  }
+}
+```
+where it returns a process creation events (Sysmon EID 1)
+
+Executing the Atomic test (T1003.001 — LSASS Credential Dumping)
+or the test to  be executed, the following command is run on the windows powershell 
+```powershell
+Import-Module "C:\AtomicRedTeam\invoke-atomicredteam\Invoke-AtomicRedTeam.psd1"
+Invoke-AtomicTest T1003.001 -ShowDetails
+```
+where it lists available sub techniques like:
+T1003.001-1: (sometimes unavailable)
+T1003.001-2: rundll32.exe comsvcs.dll MiniDump ← Use this one
+T1003.001-3: PowerShell Out-Minidump
+etc.
+
+Running the rundll32 technique:
+```powershell
+Invoke-AtomicTest T1003.001 -TestNumbers 2
+```
+This will:
+Dump LSASS memory to C:\Windows\Temp\lsass.dmp
+Generate Sysmon Event ID 10 (ProcessAccess) + Event ID 1 (process creation)
+Generate Windows Security Event ID 4656 (handle request)
+
+
+Verifying the detection in kibana:
+after waiting for 1-2 minutes, the rule should fire in Security -> Alerts 
+also the Sucirty -> Finding could be browsed to view the full event details 
+<img width="957" height="657" alt="image" src="https://github.com/user-attachments/assets/0781f843-1945-4d9a-88bc-c179a91a5b52" />
+
+Step 6.4: Run Encoded PowerShell Test (T1059.001)
+
+On windows powershell, the ecodded command test is run through the command 
+```powershell
+Invoke-AtomicTest T1059.001 -TestNumbers 1
+```
+<img width="1191" height="901" alt="image" src="https://github.com/user-attachments/assets/9810adc7-08ab-40d7-9c0e-3d10c8dab4d8" />
+
+In 2 minutes, the ecodded command alert fired in the alerts section 
+
+PART 7: BUILD KIBANA DASHBOARD
+
+Step 7.1: Create Dashboard
+
+Kibana → Dashboards → Create new dashboard
+
+Name: Credential Dumping Monitor
+
+Step 7.2: Add Panels
+
+Panel 1: LSASS Event Count (Metric)
+
+
+Click Add panel
+Select Metric
+Query: event.code: "10" AND TargetImage: *lsass*
+Click Add to dashboard
+
+
+Panel 2: Process Execution Timeline (Bar chart)
+
+
+Add panel → Bar chart
+Query: event.code: "1"
+Group by: winlog.event_data.Image
+Add to dashboard
+
+
+Panel 3: Security Event Log (Data table)
+
+
+Add panel → Data table
+Query: event.code: "4656"
+Columns: @timestamp, process.name, winlog.event_data.ObjectName
+Add to dashboard
+
+
+Panel 4: Detection Timeline
+
+
+Add panel → Line chart
+Query: *
+Time series by event.code
+Add to dashboard
 
 
 
-    
