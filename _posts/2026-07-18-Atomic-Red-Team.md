@@ -1,4 +1,4 @@
-<img width="1774" height="887" alt="80a2966e-31dc-4e48-a59f-0b8661d02afe" src="https://github.com/user-attachments/assets/8344be59-024e-49fd-bde3-3e67699333c6" />---
+---
 layout: post
 title: "Detecting LSASS Credential Dumping in ELK Using Atomic Red Team"
 description: "Generating real adversary telemetry on a Windows VM and building Kibana detection rules that catch it — from comsvcs.dll dumps to encoded PowerShell execution."
