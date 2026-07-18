@@ -372,54 +372,10 @@ On windows powershell, the ecodded command test is run through the command
 ```powershell
 Invoke-AtomicTest T1059.001 -TestNumbers 1
 ```
-<img width="1191" height="901" alt="image" src="https://github.com/user-attachments/assets/9810adc7-08ab-40d7-9c0e-3d10c8dab4d8" />
+
 
 In 2 minutes, the ecodded command alert fired in the alerts section 
 
-PART 7: BUILD KIBANA DASHBOARD
-
-Step 7.1: Create Dashboard
-
-Kibana → Dashboards → Create new dashboard
-
-Name: Credential Dumping Monitor
-
-Step 7.2: Add Panels
-
-Panel 1: LSASS Event Count (Metric)
-
-
-Click Add panel
-Select Metric
-Query: event.code: "10" AND TargetImage: *lsass*
-Click Add to dashboard
-
-
-Panel 2: Process Execution Timeline (Bar chart)
-
-
-Add panel → Bar chart
-Query: event.code: "1"
-Group by: winlog.event_data.Image
-Add to dashboard
-
-
-Panel 3: Security Event Log (Data table)
-
-
-Add panel → Data table
-Query: event.code: "4656"
-Columns: @timestamp, process.name, winlog.event_data.ObjectName
-Add to dashboard
-
-
-Panel 4: Detection Timeline
-
-
-Add panel → Line chart
-Query: *
-Time series by event.code
-Add to dashboard
-
+<img width="1191" height="901" alt="image" src="https://github.com/user-attachments/assets/9810adc7-08ab-40d7-9c0e-3d10c8dab4d8" />
 
 
