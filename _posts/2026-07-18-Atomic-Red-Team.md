@@ -380,11 +380,7 @@ After these steps, the `winlogbeat-*` index can be seen on the **Discover** page
 ![The winlogbeat index in the Discover view](https://github.com/user-attachments/assets/5d4db6ae-48f0-4fea-ad05-4479b8bacabe){: width="949" height="652" }
 _The winlogbeat-* index in Discover, showing logs received from the Windows host_
 
-![Collected Windows telemetry in the Discover view](https://github.com/user-attachments/assets/2405970d-5c3f-40fb-ac23-912044a23201){: width="949" height="652" }
-_Collected Windows telemetry browsed in the Discover view_
 
-![Collected Windows telemetry in the Discover view](https://github.com/user-attachments/assets/328b19ca-144c-42de-89dc-0cbe595d3482){: width="949" height="652" }
-_Individual event fields inspected in the Discover view_
 
 ### Rule 1 — LSASS process access (Event ID 10)
 
@@ -489,10 +485,11 @@ In Windows PowerShell, the encoded-command test is run:
 ```powershell
 Invoke-AtomicTest T1059.001 -TestNumbers 1
 ```
+![The encoded PowerShell alert firing](https://github.com/user-attachments/assets/9810adc7-08ab-40d7-9c0e-3d10c8dab4d8){: width="1191" height="901" }
 
 Within 2 minutes, the encoded-command alert fires in the Alerts section.
 
-![The encoded PowerShell alert firing](https://github.com/user-attachments/assets/9810adc7-08ab-40d7-9c0e-3d10c8dab4d8){: width="1191" height="901" }
+
 _The encoded PowerShell alert firing shortly after the test is run_
 
 ## MITRE ATT&CK mapping
